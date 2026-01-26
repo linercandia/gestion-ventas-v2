@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Ventas Rellenos Sabrosos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #4361ee 0%, #3a56d4 100%);
+        --warning-gradient: linear-gradient(135deg, #ffd166 0%, #fbbf24 100%);
+        --danger-gradient: linear-gradient(135deg, #ef476f 0%, #dc2626 100%);
+        --success-gradient: linear-gradient(135deg, #06d6a0 0%, #10b981 100%);
+        --surface-color: #ffffff;
+        --background-color: #f8f9fa;
+        --text-primary: #212529;
+        --text-secondary: #495057;
+        --border-color: #dee2e6;
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+    }
+    
+    body { 
+        background: var(--background-color); 
+        min-height: 100vh; 
+        font-family: 'Segoe UI', system-ui, sans-serif; 
+        color: var(--text-primary);
+    }
+    
+    .section-card { 
+        border-radius: var(--radius-xl); 
+        margin-bottom: 25px; 
+        border: 1px solid var(--border-color); 
+        box-shadow: var(--shadow-md); 
+        background: var(--surface-color); 
+        overflow: hidden; 
+        transition: all 0.3s ease;
+    }
+    
+    .section-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+    }
+    
+    .card-header-custom { 
+        padding: 16px 24px; 
+        font-weight: 700; 
+        font-size: 0.9rem; 
+        text-transform: uppercase; 
+        display: flex; 
+        align-items: center; 
+        gap: 12px; 
+        border-bottom: 1px solid var(--border-color);
+        letter-spacing: 0.5px;
+    }
+    
+    .header-primary { 
+        background: rgba(67, 97, 238, 0.08); 
+        color: #4361ee; 
+        border-left: 4px solid #4361ee;
+    }
+    
+    .header-warning { 
+        background: rgba(255, 209, 102, 0.08); 
+        color: #b98c10; 
+        border-left: 4px solid #ffd166;
+    }
+    
+    .header-danger { 
+        background: rgba(239, 71, 111, 0.08); 
+        color: #dc2626; 
+        border-left: 4px solid #ef476f;
+    }
+    
+    .is-blocked { 
+        background-color: #f8f9fa; 
+        pointer-events: none; 
+        opacity: 0.7;
+        position: relative;
+    }
+    
+    .is-blocked::after {
+        content: 'COMPLETADO';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #06d6a0;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        z-index: 2;
+    }
+    
+    .form-control, .form-select { 
+        border-radius: var(--radius-md); 
+        border: 1px solid var(--border-color); 
+        padding: 12px 16px; 
+        background: var(--surface-color);
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #4361ee;
+        box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+    }
+    
+    .btn-custom { 
+        border-radius: var(--radius-md); 
+        padding: 14px 24px; 
+        font-weight: 600; 
+        border: none; 
+        transition: all 0.3s ease; 
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .btn-p { 
+        background: var(--primary-gradient);
+        box-shadow: 0 4px 15px rgba(67, 97, 238, 0.2);
+    }
+    
+    .btn-p:hover {
+        background: linear-gradient(135deg, #3a56d4 0%, #2d44b5 100%);
+    }
+    
+    .btn-w { 
+        background: var(--warning-gradient);
+        box-shadow: 0 4px 15px rgba(255, 209, 102, 0.2);
+    }
+    
+    .btn-w:hover {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    }
+    
+    .btn-d { 
+        background: var(--danger-gradient);
+        box-shadow: 0 4px 15px rgba(239, 71, 111, 0.2);
+    }
+    
+    .btn-d:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    }
+    
+    .prod-box { 
+        background: #f8f9fa; 
+        border-radius: var(--radius-lg); 
+        padding: 16px; 
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+    
+    .prod-box:hover {
+        border-color: #4361ee;
+        background: rgba(67, 97, 238, 0.03);
+    }
+    
+    .badge-jornada { 
+        padding: 8px 20px; 
+        border-radius: 50px; 
+        font-weight: 600; 
+        background: white; 
+        color: #06d6a0; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+        border: 1px solid #b6f0e1;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-xs { 
+        padding: 8px 16px; 
+        font-size: 0.8rem; 
+        border-radius: var(--radius-sm); 
+        font-weight: 600; 
+        border: 1px solid var(--border-color);
+        background: white;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+    
+    .btn-xs:hover {
+        background: #f8f9fa;
+        border-color: #4361ee;
+        color: #4361ee;
+        transform: translateY(-1px);
+    }
+    
+    .trace-container { 
+        background: #f8f9fa; 
+        border-radius: var(--radius-lg); 
+        padding: 20px; 
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+    
+    .trace-container:hover {
+        border-color: #4361ee;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* Efecto ripple para botones */
+    .btn-custom::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 5px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.5);
+        opacity: 0;
+        border-radius: 100%;
+        transform: scale(1, 1) translate(-50%);
+        transform-origin: 50% 50%;
+    }
+    
+    .btn-custom:focus:not(:active)::after {
+        animation: ripple 1s ease-out;
+    }
+    
+    @keyframes ripple {
+        0% {
+            transform: scale(0, 0);
+            opacity: 0.5;
+        }
+        100% {
+            transform: scale(40, 40);
+            opacity: 0;
+        }
+    }
+    
+    /* Efecto para botones de éxito (opcional) */
+    .btn-success {
+        background: var(--success-gradient);
+        box-shadow: 0 4px 15px rgba(6, 214, 160, 0.2);
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    /* Estilo para el título del portal */
+    .portal-title {
+        background: linear-gradient(135deg, #4361ee 0%, #06d6a0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+        font-size: 2.8rem;
+        letter-spacing: -0.5px;
+        text-shadow: 0 4px 8px rgba(67, 97, 238, 0.1);
+        margin-bottom: 0.5rem;
+    }
+</style>
+</head>
+<body>
+    <div class="container py-4" style="max-width: 600px;">
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm border-0 rounded-4" role="alert">
+                    {{ message }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <header class="text-center mb-5">
+            <h2 class="portal-title">Rellenos Sabrosos</h2>
+            <span class="badge-jornada"><i class="bi bi-calendar3 me-2"></i>{{ jornada.fecha }}</span>
+        </header>
+
+        {% if control.cerrada %}
+            {% include "gestion_ventas/gracias.html" %}
+        {% elif jornada %}
+            <form method="POST" id="ventasForm">
+                {% csrf_token %}
+                
+                <div class="card section-card {% if control %}is-blocked{% endif %}">
+                    <div class="card-header-custom header-primary"><i class="bi bi-box-seam"></i> 1. Salida de Inventario</div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <label class="small fw-bold text-muted mb-1">Vendedor</label>
+                                {% if not control %}<input type="text" name="nombre_vendedor_input" class="form-control" required>
+                                {% else %}<div class="form-control bg-light fw-bold border-0">{{ control.nombre_vendedor }}</div>{% endif %}
+                            </div>
+                            <div class="col-6">
+                                <label class="small fw-bold text-muted mb-1">Zona</label>
+                                {% if not control %}
+                                    <select name="zona" class="form-select" required>
+                                        <option value="">Seleccionar...</option>
+                                        {% for z in zonas_disponibles %}<option value="{{ z.id }}">{{ z.nombre }}</option>{% endfor %}
+                                    </select>
+                                {% else %}<div class="form-control bg-light fw-bold border-0">{{ control.zona.nombre }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="row g-2"> 
+                            {% for p in productos %}
+                            <div class="col-6 mb-2">
+                                <div class="prod-box">
+                                    <label class="small fw-bold d-block text-truncate mb-1 text-primary">{{ p.nombre }}</label>
+                                    <input type="text" name="prod_salida_{{ p.id }}" class="form-control form-control-sm formato-dinamico border-0 bg-white" data-formato="{{ p.formato_visual }}"
+                                        {% for det in control.detalles.all %}{% if det.producto.id == p.id and det.cantidad_salida > 0 %} value="{{ det.cantidad_salida }}" {% endif %}{% endfor %}
+                                        placeholder="0" {% if control %}readonly{% else %}required{% endif %}>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if not control %}<button type="submit" name="accion" value="registrar_salida" class="btn btn-custom btn-p w-100 mt-4">INICIAR DÍA</button>{% endif %}
+                    </div>
+                </div>
+
+                {% if control %}
+                <div id="seccion-envios" class="card section-card">
+                    <div class="card-header-custom header-warning"><i class="bi bi-arrow-left-right"></i> 2. Envios</div>
+                    <div class="card-body">
+                        
+                        <div class="bg-light p-3 rounded-4 mb-4 border shadow-sm">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <select name="zona_destino" class="form-select form-select-sm">
+                                        {% for z in todas_las_zonas %}{% if z.id != control.zona.id %}<option value="{{ z.id }}">{{ z.nombre }}</option>{% endif %}{% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select name="producto_id" class="form-select form-select-sm">
+                                        {% for p in productos %}<option value="{{ p.id }}">{{ p.nombre }}</option>{% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" name="cant_envio" class="form-control formato-dinamico" placeholder="0">
+                                <button type="submit" name="accion" value="enviar_producto" class="btn btn-warning fw-bold text-white px-4" formnovalidate>ENVIAR</button>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="trace-container">
+                                    <h6 class="small fw-bold text-primary mb-3"><i class="bi bi-send"></i> MIS ENVÍOS</h6>
+                                    {% for e in envios_realizados %}
+                                    <div class="bg-white p-2 rounded-3 border mb-2 shadow-sm small">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold"><span class="render-formato" data-formato="{{ e.producto.formato_visual }}">{{ e.cantidad }}</span> {{ e.producto.nombre }}</span>
+                                            {% if not e.aceptado %}
+                                                <span class="badge bg-warning text-dark" style="font-size: 0.6rem;">PENDIENTE</span>
+                                            {% else %}
+                                                <span class="badge bg-success" style="font-size: 0.6rem;">RECIBIDO</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">Para: {{ e.zona_destino.nombre }}</div>
+                                    </div>
+                                    {% empty %}
+                                        <p class="text-center text-muted small py-2">No has enviado nada.</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="trace-container">
+                                    <h6 class="small fw-bold text-success mb-3"><i class="bi bi-download"></i> POR RECIBIR</h6>
+                                    
+                                    {% for ep in envios_pendientes %}
+                                    <div class="bg-white p-2 rounded-3 border border-warning mb-2 shadow-sm small">
+                                        <div class="fw-bold"><span class="render-formato" data-formato="{{ ep.producto.formato_visual }}">{{ ep.cantidad }}</span> {{ ep.producto.nombre }}</div>
+                                        <div class="text-muted mb-2" style="font-size: 0.7rem;">De: {{ ep.zona_origen.nombre }}</div>
+                                        <div class="d-flex gap-1">
+                                            <input type="hidden" name="envio_id" value="{{ ep.id }}">
+                                            <button type="submit" name="accion" value="confirmar_recibo" class="btn btn-success btn-xs w-100" formnovalidate>RECIBÍ</button>
+                                            <button type="submit" name="accion" value="rechazar_recibo" class="btn btn-danger btn-xs w-100" formnovalidate>NO</button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+
+                                    {% for er in envios_recibidos_totales %}
+                                        {% if er.aceptado %}
+                                        <div class="bg-light p-2 rounded-3 border mb-1 small opacity-75">
+                                            <div class="d-flex justify-content-between">
+                                                <span><i class="bi bi-check2-circle text-success"></i> <span class="render-formato" data-formato="{{ er.producto.formato_visual }}">{{ er.cantidad }}</span> {{ er.producto.nombre }}</span>
+                                            </div>
+                                            <div class="text-muted" style="font-size: 0.65rem; margin-left: 1.2rem;">Recibido de: {{ er.zona_origen.nombre }}</div>
+                                        </div>
+                                        {% endif %}
+                                    {% empty %}
+                                        {% if not envios_pendientes %}
+                                            <p class="text-center text-muted small py-2">Sin novedades.</p>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div id="seccion-cierre" class="card section-card">
+                    <div class="card-header-custom header-danger"><i class="bi bi-flag"></i> 3. Cierre de Jornada</div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            {% for det in control.detalles.all %}
+                            <div class="col-4 mb-3">
+                                <div class="text-center p-2 border rounded-4 bg-light">
+                                    <label class="small d-block text-truncate fw-bold mb-1">{{ det.producto.nombre }}</label>
+                                    <input type="text" name="prod_llegada_{{ det.producto.id }}" class="form-control form-control-sm text-center formato-dinamico border-0" data-formato="{{ det.producto.formato_visual }}" placeholder="0" required>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-3 p-3 bg-danger bg-opacity-10 rounded-4">
+                            <label class="small fw-bold text-danger mb-1">Efectivo Entregado</label>
+                            <input type="text" name="dinero_entregado" class="form-control form-control-lg fw-bold text-center formato-dinamico" data-formato="moneda" placeholder="$ 0" required>
+                        </div>
+                        <button type="submit" name="accion" value="cerrar_jornada" class="btn btn-custom btn-d w-100 mt-4">FINALIZAR JORNADA</button>
+                    </div>
+                </div>
+                {% endif %}
+            </form>
+        {% endif %}
+    </div>
+
+    <script>
+        const fmtM = (v) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v);
+        const fmtN = (v) => new Intl.NumberFormat('es-CO').format(v);
+        function aplicarF(input) {
+            let val = input.value.replace(/\D/g, "");
+            if (val === "") { input.value = ""; return; }
+            input.value = (input.dataset.formato === "moneda") ? fmtM(val) : fmtN(val);
+        }
+        function renderText() {
+            document.querySelectorAll('.render-formato').forEach(el => {
+                let val = el.innerText.replace(/\D/g, "");
+                if (val !== "") el.innerText = (el.dataset.formato === "moneda") ? fmtM(val) : fmtN(val);
+            });
+        }
+        document.querySelectorAll('.formato-dinamico').forEach(input => {
+            input.addEventListener('input', function() { aplicarF(this); });
+        });
+        document.getElementById('ventasForm')?.addEventListener('submit', function() {
+            document.querySelectorAll('.formato-dinamico').forEach(input => {
+                if (input.value) input.value = input.value.replace(/\D/g, "");
+            });
+        });
+        window.onload = function() {
+            renderText();
+            document.querySelectorAll('.formato-dinamico').forEach(input => {
+                if (input.value.trim() !== "") aplicarF(input);
+            });
+        };
+    </script>
+</body>
+</html>

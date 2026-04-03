@@ -1,0 +1,52 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Trazabilidad de Envios{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Trazabilidad de envios entre zonas</h2>
+    <p>Consulta cada movimiento entre zonas con su estado, origen, destino y vendedores relacionados.</p>
+</section>
+
+<section class="card">
+    <h3>Historial</h3>
+    {% if envios %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Jornada</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Origen</th>
+                    <th>Vendedor origen</th>
+                    <th>Destino</th>
+                    <th>Vendedor destino</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for envio in envios %}
+                    <tr>
+                        <td>{{ envio.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ envio.jornada.fecha }}</td>
+                        <td>{{ envio.producto.nombre }}</td>
+                        <td>{{ envio.cantidad }} {{ envio.producto.get_unidad_medida_display|lower }}</td>
+                        <td>{{ envio.zona_origen.nombre }}</td>
+                        <td>{{ envio.vendedor_origen_nombre }}</td>
+                        <td>{{ envio.zona_destino.nombre }}</td>
+                        <td>{{ envio.vendedor_destino_nombre }}</td>
+                        <td>
+                            <span class="status{% if not envio.aceptado %} off{% endif %}">
+                                {% if envio.aceptado %}Recibido{% else %}Pendiente{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">Todavia no hay envios registrados entre zonas.</p>
+    {% endif %}
+</section>
+{% endblock %}

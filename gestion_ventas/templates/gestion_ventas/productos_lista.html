@@ -1,0 +1,50 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Productos{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Productos</h2>
+    <p>Registra productos y su precio de venta. Si eliges Unidad se capturan unidades; si eliges Libra se captura en pesos.</p>
+</section>
+
+<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+    <article class="card">
+        <h3>Nuevo producto</h3>
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn btn-primary" type="submit">Guardar producto</button>
+        </form>
+    </article>
+    <article class="card">
+        <h3>Catalogo</h3>
+        {% if productos %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Codigo</th>
+                        <th>Unidad</th>
+                        <th>Registro</th>
+                        <th>Precio venta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for producto in productos %}
+                        <tr>
+                            <td>{{ producto.nombre }}</td>
+                            <td>{{ producto.codigo }}</td>
+                            <td>{{ producto.get_unidad_medida_display }}</td>
+                            <td>{% if producto.formato_visual == "moneda" %}Pesos{% else %}Unidades{% endif %}</td>
+                            <td>{{ producto.precio_venta }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Todavia no has registrado productos.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Vendedores{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Vendedores</h2>
+    <p>Administra el equipo que recibira enlaces de jornadas, registrara ventas y tendra pagos calculados por comision.</p>
+</section>
+
+<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+    <article class="card">
+        <h3>Nuevo vendedor</h3>
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn btn-primary" type="submit">Guardar vendedor</button>
+        </form>
+    </article>
+    <article class="card">
+        <h3>Equipo</h3>
+        {% if vendedores %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Telefono</th>
+                        <th>Zona preferida</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vendedor in vendedores %}
+                        <tr>
+                            <td>{{ vendedor.nombre }}</td>
+                            <td>{{ vendedor.telefono }}</td>
+                            <td>{{ vendedor.zona_preferida|default:"-" }}</td>
+                            <td>{% if vendedor.activo %}Activo{% else %}Inactivo{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Todavia no has registrado vendedores.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

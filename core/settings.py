@@ -25,13 +25,13 @@ SECRET_KEY = 'django-insecure-234o*%c&_q3*de#=grkfkmxc=d+p5ra1($8@uqul)lz_7^cii$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['linercandia.pythonanywhere.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'gestion_ventas',
+    'gestion_ventas.apps.GestionVentasConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

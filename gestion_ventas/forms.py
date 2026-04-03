@@ -1,0 +1,87 @@
+from django import forms
+
+from .models import Adelanto, ControlZonaJornada, Jornada, Producto, Vendedor, Zona
+
+
+class JornadaForm(forms.ModelForm):
+    class Meta:
+        model = Jornada
+        fields = ["nombre", "fecha", "activa"]
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class InformeForm(forms.ModelForm):
+    class Meta:
+        model = ControlZonaJornada
+        fields = ["nombre_vendedor", "dinero_entregado", "cerrada"]
+        widgets = {
+            "dinero_entregado": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+        }
+
+
+class ZonaForm(forms.ModelForm):
+    class Meta:
+        model = Zona
+        fields = ["nombre", "codigo", "descripcion", "porcentaje_comision", "activa"]
+        widgets = {
+            "porcentaje_comision": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+        }
+
+
+class ProductoForm(forms.ModelForm):
+    class Meta:
+        model = Producto
+        fields = ["nombre", "codigo", "unidad_medida", "precio_venta", "activo"]
+        widgets = {
+            "precio_venta": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["unidad_medida"].help_text = "Si eliges Unidad, se registra en unidades. Si eliges Libra, se registra en pesos."
+
+
+class VendedorForm(forms.ModelForm):
+    class Meta:
+        model = Vendedor
+        fields = ["nombre", "telefono", "identificacion", "zona_preferida", "activo"]
+
+    def __init__(self, *args, **kwargs):
+        zonas = kwargs.pop("zonas", None)
+        super().__init__(*args, **kwargs)
+        if zonas is not None:
+            self.fields["zona_preferida"].queryset = zonas
+
+
+class AdelantoForm(forms.ModelForm):
+    class Meta:
+        model = Adelanto
+        fields = ["vendedor", "control", "fecha", "monto", "motivo"]
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}),
+            "monto": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        vendedores = kwargs.pop("vendedores", None)
+        controles = kwargs.pop("controles", None)
+        super().__init__(*args, **kwargs)
+        if vendedores is not None:
+            self.fields["vendedor"].queryset = vendedores
+        if controles is not None:
+            self.fields["control"].queryset = controles
+            self.fields["control"].required = False
+
+
+class DesprendiblePagoForm(forms.Form):
+    vendedor = forms.ModelChoiceField(queryset=Vendedor.objects.none(), required=False)
+    fecha_inicio = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    fecha_fin = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+
+    def __init__(self, *args, **kwargs):
+        vendedores = kwargs.pop("vendedores", None)
+        super().__init__(*args, **kwargs)
+        if vendedores is not None:
+            self.fields["vendedor"].queryset = vendedores

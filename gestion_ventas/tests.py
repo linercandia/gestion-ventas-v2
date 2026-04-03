@@ -1,3 +1,348 @@
+from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
 
-# Create your tests here.
+from datetime import timedelta
+from decimal import Decimal
+
+from .models import Adelanto, Cliente, ControlZonaJornada, EnvioInterzona, InventarioControl, Jornada, Producto, Vendedor, Zona
+
+
+User = get_user_model()
+
+
+class ClienteSignalsTests(TestCase):
+    def test_crea_perfil_cliente_al_crear_usuario(self):
+        user = User.objects.create_user(username="cliente_demo", password="secret123")
+
+        self.assertTrue(Cliente.objects.filter(usuario=user).exists())
+
+
+class PortalJornadaTests(TestCase):
+    def test_portal_publico_resuelve_jornada_por_token(self):
+        user = User.objects.create_user(username="cliente_portal", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+
+        response = self.client.get(reverse("portal_vendedor_token", args=[jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["jornada"], jornada)
+
+    def test_portal_publico_muestra_vendedores_del_negocio(self):
+        user = User.objects.create_user(username="cliente_vendedores", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        vendedor = Vendedor.objects.create(cliente=cliente, nombre="PABLO")
+
+        response = self.client.get(reverse("portal_vendedor_token", args=[jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "PABLO")
+        self.assertIn(vendedor, response.context["vendedores"])
+
+    def test_portal_avisa_cuando_no_hay_zonas_libres(self):
+        user = User.objects.create_user(username="cliente_zonas", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        ControlZonaJornada.objects.create(jornada=jornada, zona=zona, nombre_vendedor="Ana")
+
+        response = self.client.get(reverse("portal_vendedor_token", args=[jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No hay zonas activas libres para esta jornada.")
+
+    def test_portal_muestra_unidad_del_producto(self):
+        user = User.objects.create_user(username="cliente_unidad", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+
+        response = self.client.get(reverse("portal_vendedor_token", args=[jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Unidad: Unidad")
+        self.assertContains(response, 'data-formato="unidades"')
+
+    def test_portal_muestra_pesos_como_doble_signo_para_productos_tipo_libra(self):
+        user = User.objects.create_user(username="cliente_pesos", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        Producto.objects.create(cliente=cliente, nombre="Rellena", unidad_medida="Lb", precio_venta=5000)
+
+        response = self.client.get(reverse("portal_vendedor_token", args=[jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "$$")
+        self.assertContains(response, 'data-formato="moneda"')
+
+    def test_portal_usa_unidad_real_aun_si_formato_guardado_esta_mal(self):
+        user = User.objects.create_user(username="cliente_unidad_real", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Envuelto", unidad_medida="Und", precio_venta=1000)
+        Producto.objects.filter(id=producto.id).update(formato_visual="moneda")
+
+        response = self.client.get(reverse("portal_vendedor_token", args=[jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-formato="unidades"')
+
+    def test_envio_se_crea_pendiente_y_se_confirma_en_destino(self):
+        user = User.objects.create_user(username="cliente_envio", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona_origen = Zona.objects.create(cliente=cliente, nombre="Norte", activa=True)
+        zona_destino = Zona.objects.create(cliente=cliente, nombre="Sur", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+        control_origen = ControlZonaJornada.objects.create(jornada=jornada, zona=zona_origen, nombre_vendedor="Ana")
+        control_destino = ControlZonaJornada.objects.create(jornada=jornada, zona=zona_destino, nombre_vendedor="Luis")
+        InventarioControl.objects.create(control=control_origen, producto=producto, cantidad_salida=10)
+        InventarioControl.objects.create(control=control_destino, producto=producto, cantidad_salida=0)
+
+        session = self.client.session
+        session["control_id"] = control_origen.id
+        session.save()
+        response_envio = self.client.post(
+            reverse("portal_vendedor_token", args=[jornada.access_token]),
+            {
+                "accion": "enviar_producto",
+                "zona_destino": str(zona_destino.id),
+                "producto_id": str(producto.id),
+                "cant_envio": "3",
+            },
+        )
+        envio = EnvioInterzona.objects.get()
+
+        self.assertEqual(response_envio.status_code, 302)
+        self.assertFalse(envio.aceptado)
+
+        session = self.client.session
+        session["control_id"] = control_destino.id
+        session.save()
+        response_confirmacion = self.client.post(
+            reverse("portal_vendedor_token", args=[jornada.access_token]),
+            {
+                "accion": "confirmar_recibo",
+                "envio_id": str(envio.id),
+            },
+        )
+        envio.refresh_from_db()
+
+        self.assertEqual(response_confirmacion.status_code, 302)
+        self.assertTrue(envio.aceptado)
+
+    def test_envio_puede_rechazarse_desde_zona_destino(self):
+        user = User.objects.create_user(username="cliente_rechazo", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona_origen = Zona.objects.create(cliente=cliente, nombre="Norte", activa=True)
+        zona_destino = Zona.objects.create(cliente=cliente, nombre="Sur", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+        ControlZonaJornada.objects.create(jornada=jornada, zona=zona_origen, nombre_vendedor="Ana")
+        control_destino = ControlZonaJornada.objects.create(jornada=jornada, zona=zona_destino, nombre_vendedor="Luis")
+        envio = EnvioInterzona.objects.create(
+            jornada=jornada,
+            zona_origen=zona_origen,
+            zona_destino=zona_destino,
+            producto=producto,
+            cantidad=2,
+            aceptado=False,
+        )
+
+        session = self.client.session
+        session["control_id"] = control_destino.id
+        session.save()
+        response = self.client.post(
+            reverse("portal_vendedor_token", args=[jornada.access_token]),
+            {
+                "accion": "rechazar_recibo",
+                "envio_id": str(envio.id),
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(EnvioInterzona.objects.filter(id=envio.id).exists())
+
+
+class PanelClienteTests(TestCase):
+    def test_usuario_cliente_autenticado_ve_panel(self):
+        user = User.objects.create_user(username="cliente_panel", password="secret123")
+        cliente = user.cliente_profile
+        self.client.login(username="cliente_panel", password="secret123")
+
+        response = self.client.get(reverse("panel_cliente"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["cliente"], cliente)
+
+    def test_superusuario_desde_login_va_al_admin(self):
+        User.objects.create_superuser(username="root", password="secret123", email="root@example.com")
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "root", "password": "secret123"},
+        )
+
+        self.assertRedirects(response, "/admin/")
+
+    def test_cliente_puede_editar_informe_propio(self):
+        user = User.objects.create_user(username="cliente_edit", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro")
+        control = ControlZonaJornada.objects.create(jornada=jornada, zona=zona, nombre_vendedor="Ana")
+        self.client.login(username="cliente_edit", password="secret123")
+
+        response = self.client.get(reverse("informe_editar", args=[control.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["control"], control)
+
+    def test_usuario_cliente_puede_registrar_zona_y_producto(self):
+        user = User.objects.create_user(username="cliente_catalogo", password="secret123")
+        self.client.login(username="cliente_catalogo", password="secret123")
+
+        zona_response = self.client.post(
+            reverse("zonas_cliente"),
+            {
+                "nombre": "Norte",
+                "codigo": "N1",
+                "descripcion": "Zona norte",
+                "porcentaje_comision": "12.5",
+                "activa": "on",
+            },
+        )
+        producto_response = self.client.post(
+            reverse("productos_cliente"),
+            {
+                "nombre": "Producto A",
+                "codigo": "PA",
+                "unidad_medida": "Und",
+                "precio_venta": "3000",
+                "activo": "on",
+            },
+        )
+
+        self.assertEqual(zona_response.status_code, 302)
+        self.assertEqual(producto_response.status_code, 302)
+        self.assertTrue(Zona.objects.filter(nombre="Norte").exists())
+        self.assertTrue(Producto.objects.filter(nombre="Producto A", precio_venta=3000).exists())
+
+    def test_producto_define_formato_segun_unidad(self):
+        user = User.objects.create_user(username="cliente_formatos", password="secret123")
+        cliente = user.cliente_profile
+
+        producto_unidad = Producto.objects.create(cliente=cliente, nombre="Producto U", unidad_medida="Und", precio_venta=1000)
+        producto_libra = Producto.objects.create(cliente=cliente, nombre="Producto L", unidad_medida="Lb", precio_venta=5000)
+
+        self.assertEqual(producto_unidad.formato_visual, "unidades")
+        self.assertEqual(producto_libra.formato_visual, "moneda")
+
+    def test_panel_muestra_trazabilidad_de_envios(self):
+        user = User.objects.create_user(username="cliente_traza", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona_origen = Zona.objects.create(cliente=cliente, nombre="Norte", activa=True)
+        zona_destino = Zona.objects.create(cliente=cliente, nombre="Sur", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", precio_venta=1000)
+        ControlZonaJornada.objects.create(jornada=jornada, zona=zona_origen, nombre_vendedor="Ana")
+        ControlZonaJornada.objects.create(jornada=jornada, zona=zona_destino, nombre_vendedor="Luis")
+        EnvioInterzona.objects.create(
+            jornada=jornada,
+            zona_origen=zona_origen,
+            zona_destino=zona_destino,
+            producto=producto,
+            cantidad=3,
+            aceptado=False,
+        )
+        self.client.login(username="cliente_traza", password="secret123")
+
+        response = self.client.get(reverse("envios_trazabilidad"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ana")
+        self.assertContains(response, "Luis")
+        self.assertContains(response, "Pendiente")
+
+    def test_desprendible_pago_filtra_por_vendedor_y_calcula_total(self):
+        user = User.objects.create_user(username="cliente_desprendible", password="secret123")
+        cliente = user.cliente_profile
+        vendedor = Vendedor.objects.create(cliente=cliente, nombre="Pedro")
+        otra_vendedora = Vendedor.objects.create(cliente=cliente, nombre="Ana")
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", porcentaje_comision=10)
+        producto = Producto.objects.create(cliente=cliente, nombre="Producto A", unidad_medida="Und", precio_venta=Decimal("10000"))
+        fecha_fin = timezone.localdate()
+        fecha_inicio = fecha_fin - timedelta(days=2)
+        jornada = Jornada.objects.create(cliente=cliente, fecha=fecha_fin, activa=True)
+        control = ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=zona,
+            vendedor=vendedor,
+            nombre_vendedor="Pedro",
+            dinero_entregado=Decimal("35000"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
+        Adelanto.objects.create(vendedor=vendedor, control=control, monto=Decimal("1000"))
+        Adelanto.objects.create(vendedor=vendedor, monto=Decimal("500"), fecha=timezone.localdate(), motivo="Anticipo")
+
+        otra_jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate() - timedelta(days=1), activa=False)
+        otro_control = ControlZonaJornada.objects.create(
+            jornada=otra_jornada,
+            zona=zona,
+            vendedor=otra_vendedora,
+            nombre_vendedor="Ana",
+            dinero_entregado=Decimal("50000"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(control=otro_control, producto=producto, cantidad_salida=5, cantidad_llegada=0)
+
+        self.client.login(username="cliente_desprendible", password="secret123")
+        response = self.client.get(
+            reverse("desprendible_pago"),
+            {
+                "vendedor": vendedor.id,
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "fecha_fin": fecha_fin.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pedro")
+        self.assertEqual(list(response.context["controles"]), [control])
+        self.assertEqual(len(response.context["filas_diarias"]), 3)
+        self.assertEqual(response.context["filas_diarias"][0]["fecha"], fecha_fin)
+        self.assertEqual(response.context["filas_diarias"][1]["fecha"], fecha_fin - timedelta(days=1))
+        self.assertEqual(response.context["filas_diarias"][2]["fecha"], fecha_inicio)
+        self.assertFalse(response.context["filas_diarias"][1]["trabajo"])
+        self.assertEqual(response.context["resumen"]["total_comision"], Decimal("4000"))
+        self.assertEqual(response.context["resumen"]["total_descuadre"], Decimal("5000"))
+        self.assertEqual(response.context["resumen"]["total_adelantos_vinculados"], Decimal("1000"))
+        self.assertEqual(response.context["resumen"]["total_adelantos_adicionales"], Decimal("500"))
+        self.assertEqual(response.context["resumen"]["total_pagar"], Decimal("0"))
+
+    def test_pago_neto_descuenta_adelantos_y_descuadre(self):
+        user = User.objects.create_user(username="cliente_pago", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", porcentaje_comision=10)
+        producto = Producto.objects.create(cliente=cliente, nombre="Producto A", precio_venta=Decimal("10000"))
+        control = ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=zona,
+            nombre_vendedor="Ana",
+            dinero_entregado=Decimal("35000"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
+        Adelanto.objects.create(vendedor=user.cliente_profile.vendedores.create(nombre="Ana"), control=control, monto=Decimal("2000"))
+
+        self.assertEqual(control.total_venta_esperada, Decimal("40000"))
+        self.assertEqual(control.comision_valor, Decimal("4000"))
+        self.assertEqual(control.descuadre_dinero, Decimal("5000"))
+        self.assertEqual(control.total_adelantos, Decimal("2000"))
+        self.assertEqual(control.rentabilidad, Decimal("31000"))
+        self.assertEqual(control.pago_neto, 0)

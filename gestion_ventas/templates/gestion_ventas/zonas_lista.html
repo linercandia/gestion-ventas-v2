@@ -1,0 +1,48 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Zonas{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Zonas y comisiones</h2>
+    <p>Define las zonas de venta y el porcentaje de comision que se usara para calcular el pago del vendedor.</p>
+</section>
+
+<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+    <article class="card">
+        <h3>Nueva zona</h3>
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn btn-primary" type="submit">Guardar zona</button>
+        </form>
+    </article>
+    <article class="card">
+        <h3>Zonas registradas</h3>
+        {% if zonas %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Zona</th>
+                        <th>Codigo</th>
+                        <th>Comision</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for zona in zonas %}
+                        <tr>
+                            <td>{{ zona.nombre }}</td>
+                            <td>{{ zona.codigo }}</td>
+                            <td>{{ zona.porcentaje_comision }}%</td>
+                            <td>{% if zona.activa %}Activa{% else %}Inactiva{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Todavia no has creado zonas.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

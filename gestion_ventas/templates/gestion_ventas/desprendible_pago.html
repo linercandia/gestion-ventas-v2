@@ -1,0 +1,107 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Desprendible de Pago{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Desprendible de pago</h2>
+    <p>Genera un comprobante compacto por vendedor y periodo para compartirlo facilmente por captura de pantalla.</p>
+</section>
+
+<section class="card">
+    <form method="get" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: end;">
+        <div>{{ form.vendedor.label_tag }}{{ form.vendedor }}</div>
+        <div>{{ form.fecha_inicio.label_tag }}{{ form.fecha_inicio }}</div>
+        <div>{{ form.fecha_fin.label_tag }}{{ form.fecha_fin }}</div>
+        <div><button class="btn btn-primary" type="submit">Generar</button></div>
+    </form>
+</section>
+
+{% if resumen %}
+<section class="card" style="padding: 18px;">
+    <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
+        <div>
+            <h3 style="margin:0;">Desprendible</h3>
+            <div class="muted">{{ resumen.vendedor|default:"Todos" }} | {{ resumen.fecha_inicio }} al {{ resumen.fecha_fin }}</div>
+        </div>
+        <div style="text-align:right;">
+            <div class="muted">Total neto a pagar</div>
+            <div class="kpi" style="font-size:1.8rem;"><strong>{{ resumen.total_pagar }}</strong></div>
+        </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:10px; margin-bottom:14px;">
+        <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
+            <div class="muted">Ventas</div>
+            <strong>{{ resumen.total_venta }}</strong>
+        </div>
+        <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
+            <div class="muted">Comision</div>
+            <strong>{{ resumen.total_comision }}</strong>
+        </div>
+        <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
+            <div class="muted">Descuadres</div>
+            <strong>{{ resumen.total_descuadre }}</strong>
+        </div>
+        <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
+            <div class="muted">Adelantos</div>
+            <strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales }}</strong>
+        </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <table style="font-size:0.92rem;">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Zona</th>
+                    <th>Venta</th>
+                    <th>Comision</th>
+                    <th>Descuadre</th>
+                    <th>Adelantos</th>
+                    <th>Pagar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in filas_diarias %}
+                    <tr>
+                        <td>{{ fila.fecha|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if fila.trabajo %}
+                                {{ fila.zonas }}
+                            {% else %}
+                                <span class="muted">Sin registro</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ fila.venta }}</td>
+                        <td>{{ fila.comision }}</td>
+                        <td>{{ fila.descuadre }}</td>
+                        <td>{{ fila.adelantos_jornada|add:fila.adelantos_extra }}</td>
+                        <td><strong>{{ fila.pago }}</strong></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="2">Total del periodo</th>
+                    <th>{{ resumen.total_venta }}</th>
+                    <th>{{ resumen.total_comision }}</th>
+                    <th>{{ resumen.total_descuadre }}</th>
+                    <th>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales }}</th>
+                    <th><strong>{{ resumen.total_pagar }}</strong></th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {% if adelantos_adicionales %}
+        <div class="muted" style="margin-top:12px; font-size:0.9rem;">
+            Adelantos adicionales del periodo:
+            {% for adelanto in adelantos_adicionales %}
+                {{ adelanto.fecha|date:"d/m" }} {{ adelanto.motivo|default:"Adelanto" }} ({{ adelanto.monto }}){% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Resumen del Negocio{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Control diario del negocio</h2>
+    <p>
+        Desde aqui puedes abrir jornadas, compartir el enlace con tus vendedores y revisar
+        el estado de captura en tiempo real sin entrar al admin tecnico de Django.
+    </p>
+    <div class="actions">
+        <a class="btn btn-secondary" href="{% url 'jornada_crear' %}">Crear jornada</a>
+        <a class="btn btn-secondary" href="{% url 'informes_cliente' %}">Ver informes</a>
+        <a class="btn btn-secondary" href="{% url 'pagos_cliente' %}">Ver pagos</a>
+    </div>
+</section>
+
+<section class="grid stats">
+    <article class="card">
+        <div class="muted">Vendedores activos</div>
+        <div class="kpi">{{ total_vendedores }}</div>
+    </article>
+    <article class="card">
+        <div class="muted">Zonas activas</div>
+        <div class="kpi">{{ total_zonas }}</div>
+    </article>
+    <article class="card">
+        <div class="muted">Productos activos</div>
+        <div class="kpi">{{ total_productos }}</div>
+    </article>
+    <article class="card">
+        <div class="muted">Adelantos del mes</div>
+        <div class="kpi">{{ adelantos_mes }}</div>
+    </article>
+</section>
+
+<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+    <article class="card">
+        <h3>Jornada activa</h3>
+        {% if jornada_activa %}
+            <p><strong>{{ jornada_activa.fecha }}</strong>{% if jornada_activa.nombre %} · {{ jornada_activa.nombre }}{% endif %}</p>
+            <p class="muted">Comparte este enlace con los vendedores para el registro operativo.</p>
+            <input value="{{ jornada_activa.portal_path }}" readonly>
+            <div class="actions">
+                <a class="btn btn-primary" href="{{ jornada_activa.portal_path }}">Abrir portal</a>
+                <a class="btn btn-secondary" href="{% url 'jornada_editar' jornada_activa.id %}">Editar jornada</a>
+            </div>
+        {% else %}
+            <p class="muted">No hay una jornada activa para hoy.</p>
+            <a class="btn btn-primary" href="{% url 'jornada_crear' %}">Crear jornada de hoy</a>
+        {% endif %}
+    </article>
+
+    <article class="card">
+        <h3>Ultimos controles</h3>
+        {% if ultimos_controles %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Zona</th>
+                        <th>Vendedor</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for control in ultimos_controles %}
+                        <tr>
+                            <td>{{ control.jornada.fecha }}</td>
+                            <td>{{ control.zona.nombre }}</td>
+                            <td>{{ control.vendedor_nombre }}</td>
+                            <td>
+                                <span class="status{% if not control.cerrada %} off{% endif %}">
+                                    {% if control.cerrada %}Cerrado{% else %}Abierto{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Todavia no hay actividad registrada.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

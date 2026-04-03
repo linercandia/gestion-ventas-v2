@@ -289,6 +289,7 @@
         {% elif jornada %}
             <form method="POST" id="ventasForm">
                 {% csrf_token %}
+                <input type="hidden" name="accion" id="accionInput" value="">
                 
                 <div class="card section-card {% if control %}is-blocked{% endif %}">
                     <div class="card-header-custom header-primary"><i class="bi bi-box-seam"></i> 1. Salida de Inventario</div>
@@ -296,16 +297,47 @@
                         <div class="row g-3 mb-4">
                             <div class="col-6">
                                 <label class="small fw-bold text-muted mb-1">Vendedor</label>
-                                {% if not control %}<input type="text" name="nombre_vendedor_input" class="form-control" required>
-                                {% else %}<div class="form-control bg-light fw-bold border-0">{{ control.nombre_vendedor }}</div>{% endif %}
+                                {% if not control %}
+                                    {% if vendedores %}
+                                        <select name="vendedor" class="form-select" required>
+                                            <option value="">Seleccionar vendedor...</option>
+                                            {% for vendedor in vendedores %}
+                                                <option value="{{ vendedor.id }}">{{ vendedor.nombre }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="hidden" name="nombre_vendedor_input" value="">
+                                    {% else %}
+                                        <input type="text" name="nombre_vendedor_input" class="form-control" required>
+                                    {% endif %}
+                                {% else %}<div class="form-control bg-light fw-bold border-0">{{ control.vendedor_nombre }}</div>{% endif %}
                             </div>
                             <div class="col-6">
                                 <label class="small fw-bold text-muted mb-1">Zona</label>
                                 {% if not control %}
                                     <select name="zona" class="form-select" required>
-                                        <option value="">Seleccionar...</option>
-                                        {% for z in zonas_disponibles %}<option value="{{ z.id }}">{{ z.nombre }}</option>{% endfor %}
+                                        {% if zonas_disponibles %}
+                                            <option value="">Seleccionar...</option>
+                                            {% for z in zonas_disponibles %}<option value="{{ z.id }}">{{ z.nombre }}</option>{% endfor %}
+                                        {% else %}
+                                            <option value="">No hay zonas disponibles</option>
+                                        {% endif %}
                                     </select>
+                                    {% if not zonas_disponibles %}
+                                        <div class="small text-danger mt-2">
+                                            No hay zonas activas libres para esta jornada.
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            Revisa si la zona esta inactiva o si ya fue usada hoy por otro vendedor.
+                                        </div>
+                                        {% if zonas_configuradas %}
+                                            <div class="small text-muted mt-2">
+                                                Zonas activas configuradas:
+                                                {% for z in zonas_configuradas %}
+                                                    {{ z.nombre }}{% if z.id in zonas_ocupadas_ids %} (ocupada){% else %} (libre){% endif %}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
                                 {% else %}<div class="form-control bg-light fw-bold border-0">{{ control.zona.nombre }}</div>{% endif %}
                             </div>
                         </div>
@@ -314,9 +346,10 @@
                             <div class="col-6 mb-2">
                                 <div class="prod-box">
                                     <label class="small fw-bold d-block text-truncate mb-1 text-primary">{{ p.nombre }}</label>
-                                    <input type="text" name="prod_salida_{{ p.id }}" class="form-control form-control-sm formato-dinamico border-0 bg-white" data-formato="{{ p.formato_visual }}"
+                                    <div class="small text-muted mb-2">{% if p.unidad_medida == "Lb" %}$${% else %}Unidad: {{ p.get_unidad_medida_display }}{% endif %}</div>
+                                    <input type="text" name="prod_salida_{{ p.id }}" class="form-control form-control-sm formato-dinamico border-0 bg-white" data-formato="{{ p.formato_captura }}"
                                         {% for det in control.detalles.all %}{% if det.producto.id == p.id and det.cantidad_salida > 0 %} value="{{ det.cantidad_salida }}" {% endif %}{% endfor %}
-                                        placeholder="0" {% if control %}readonly{% else %}required{% endif %}>
+                                        placeholder="0 {{ p.get_unidad_medida_display|lower }}" {% if control %}readonly{% else %}required{% endif %}>
                                 </div>
                             </div>
                             {% endfor %}
@@ -356,7 +389,7 @@
                                     {% for e in envios_realizados %}
                                     <div class="bg-white p-2 rounded-3 border mb-2 shadow-sm small">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <span class="fw-bold"><span class="render-formato" data-formato="{{ e.producto.formato_visual }}">{{ e.cantidad }}</span> {{ e.producto.nombre }}</span>
+                                            <span class="fw-bold"><span class="render-formato" data-formato="{{ e.producto.formato_captura }}">{{ e.cantidad }}</span> {{ e.producto.get_unidad_medida_display|lower }} de {{ e.producto.nombre }}</span>
                                             {% if not e.aceptado %}
                                                 <span class="badge bg-warning text-dark" style="font-size: 0.6rem;">PENDIENTE</span>
                                             {% else %}
@@ -377,12 +410,12 @@
                                     
                                     {% for ep in envios_pendientes %}
                                     <div class="bg-white p-2 rounded-3 border border-warning mb-2 shadow-sm small">
-                                        <div class="fw-bold"><span class="render-formato" data-formato="{{ ep.producto.formato_visual }}">{{ ep.cantidad }}</span> {{ ep.producto.nombre }}</div>
+                                        <div class="fw-bold"><span class="render-formato" data-formato="{{ ep.producto.formato_captura }}">{{ ep.cantidad }}</span> {{ ep.producto.get_unidad_medida_display|lower }} de {{ ep.producto.nombre }}</div>
                                         <div class="text-muted mb-2" style="font-size: 0.7rem;">De: {{ ep.zona_origen.nombre }}</div>
+                                        
                                         <div class="d-flex gap-1">
-                                            <input type="hidden" name="envio_id" value="{{ ep.id }}">
-                                            <button type="submit" name="accion" value="confirmar_recibo" class="btn btn-success btn-xs w-100" formnovalidate>RECIBÍ</button>
-                                            <button type="submit" name="accion" value="rechazar_recibo" class="btn btn-danger btn-xs w-100" formnovalidate>NO</button>
+                                            <button type="submit" name="envio_id" value="{{ ep.id }}" class="btn btn-success btn-xs w-100" formnovalidate onclick="document.getElementById('accionInput').value='confirmar_recibo'">RECIBÍ</button>
+                                            <button type="submit" name="envio_id" value="{{ ep.id }}" class="btn btn-danger btn-xs w-100" formnovalidate onclick="document.getElementById('accionInput').value='rechazar_recibo'">NO</button>
                                         </div>
                                     </div>
                                     {% endfor %}
@@ -391,7 +424,7 @@
                                         {% if er.aceptado %}
                                         <div class="bg-light p-2 rounded-3 border mb-1 small opacity-75">
                                             <div class="d-flex justify-content-between">
-                                                <span><i class="bi bi-check2-circle text-success"></i> <span class="render-formato" data-formato="{{ er.producto.formato_visual }}">{{ er.cantidad }}</span> {{ er.producto.nombre }}</span>
+                                                <span><i class="bi bi-check2-circle text-success"></i> <span class="render-formato" data-formato="{{ er.producto.formato_captura }}">{{ er.cantidad }}</span> {{ er.producto.get_unidad_medida_display|lower }} de {{ er.producto.nombre }}</span>
                                             </div>
                                             <div class="text-muted" style="font-size: 0.65rem; margin-left: 1.2rem;">Recibido de: {{ er.zona_origen.nombre }}</div>
                                         </div>
@@ -416,7 +449,8 @@
                             <div class="col-4 mb-3">
                                 <div class="text-center p-2 border rounded-4 bg-light">
                                     <label class="small d-block text-truncate fw-bold mb-1">{{ det.producto.nombre }}</label>
-                                    <input type="text" name="prod_llegada_{{ det.producto.id }}" class="form-control form-control-sm text-center formato-dinamico border-0" data-formato="{{ det.producto.formato_visual }}" placeholder="0" required>
+                                    <div class="small text-muted mb-2">{% if det.producto.unidad_medida == "Lb" %}$${% else %}{{ det.producto.get_unidad_medida_display }}{% endif %}</div>
+                                    <input type="text" name="prod_llegada_{{ det.producto.id }}" class="form-control form-control-sm text-center formato-dinamico border-0" data-formato="{{ det.producto.formato_captura }}" placeholder="0 {{ det.producto.get_unidad_medida_display|lower }}" required>
                                 </div>
                             </div>
                             {% endfor %}

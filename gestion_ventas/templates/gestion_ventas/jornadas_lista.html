@@ -1,0 +1,47 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Jornadas{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Jornadas</h2>
+    <p>Administra las jornadas diarias que tus vendedores usaran para reportar operaciones en tiempo real.</p>
+    <div class="actions">
+        <a class="btn btn-secondary" href="{% url 'jornada_crear' %}">Nueva jornada</a>
+    </div>
+</section>
+
+<section class="card">
+    <h3>Listado</h3>
+    {% if jornadas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Nombre</th>
+                    <th>Estado</th>
+                    <th>Enlace</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for jornada in jornadas %}
+                    <tr>
+                        <td>{{ jornada.fecha }}</td>
+                        <td>{{ jornada.nombre|default:"Sin nombre" }}</td>
+                        <td>
+                            <span class="status{% if not jornada.activa %} off{% endif %}">
+                                {% if jornada.activa %}Activa{% else %}Inactiva{% endif %}
+                            </span>
+                        </td>
+                        <td><input value="{{ jornada.portal_path }}" readonly></td>
+                        <td><a class="btn btn-secondary" href="{% url 'jornada_editar' jornada.id %}">Editar</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="muted">Aun no has creado jornadas.</p>
+    {% endif %}
+</section>
+{% endblock %}

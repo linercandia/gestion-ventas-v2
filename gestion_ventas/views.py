@@ -1,247 +1,649 @@
-"""
-Módulo de Vistas - Sistema de Gestión de Ventas
------------------------------------------------
-Este archivo contiene la lógica central del negocio, incluyendo:
-1. Gestión de sesiones de vendedores mediante UUID.
-2. Integración con Google Sheets API para reportes en tiempo real.
-3. Control de inventario interzonas (envíos y recibos).
-4. Generación de reportes consolidados en formato Excel.
-"""
-
-import os
+from datetime import timedelta
 from decimal import Decimal
+
 import openpyxl
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-from django.db import models, IntegrityError
-from django.db.models import Sum
-from django.shortcuts import render, redirect
-from django.utils import timezone
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.db.models import Sum
+from django.forms import modelformset_factory
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
-from .models import (
-    Jornada, Zona, Producto, EnvioInterzona,
-    ControlZonaJornada, InventarioControl
+from .forms import AdelantoForm, DesprendiblePagoForm, InformeForm, JornadaForm, ProductoForm, VendedorForm, ZonaForm
+from .models import Adelanto, ControlZonaJornada, EnvioInterzona, InventarioControl, Producto, Vendedor, Zona
+from .services import (
+    obtener_jornada_portal,
+    productos_disponibles_para_jornada,
+    sincronizar_a_sheets,
+    zonas_disponibles_para_jornada,
 )
 
-# =============================================================================
-# FUNCIONES AUXILIARES (UTILITIES)
-# =============================================================================
 
-def sincronizar_a_sheets(tipo, instancia, nombre_vendedor=None):
-    """
-    Sincroniza los movimientos de la jornada hacia una hoja de cálculo de Google.
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect_usuario_segun_rol(request.user)
 
-    Args:
-        tipo (str): El tipo de registro ('movimientos', 'confirmacion_interzona', 'dinero').
-        instancia (obj): Instancia del modelo (ControlZonaJornada o EnvioInterzona).
-        nombre_vendedor (str, optional): Nombre del vendedor para trazabilidad en traspasos.
+    error = None
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
 
-    Estructura de Columnas en Sheets:
-    FECHA | NOMBRE | ZONA | PRODUCTO | CANT SALIDA | CANT ENVIADO | CANT RECIBIDO | CANT CIERRE
-    """
-    try:
-        # Configuración de credenciales de Google API
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        json_path = os.path.join(base_path, 'creds.json')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect_usuario_segun_rol(user)
+        error = "Credenciales incorrectas. Intenta nuevamente."
 
-        creds = ServiceAccountCredentials.from_json_keyfile_name(json_path, scope)
-        client = gspread.authorize(creds)
-        spreadsheet = client.open("Registro Ventas")
-        sheet_movs = spreadsheet.worksheet("movimientos")
-
-        # Registro de Carga Inicial (Salida de Bodega)
-        if tipo == 'movimientos':
-            for det in instancia.detalles.all():
-                sheet_movs.append_row([
-                    str(instancia.jornada.fecha), instancia.nombre_vendedor, instancia.zona.nombre,
-                    det.producto.nombre, det.cantidad_salida, 0, 0, 0
-                ])
-
-        # Registro de Traspaso entre Zonas (Solo al confirmar recibo)
-        elif tipo == 'confirmacion_interzona':
-            # Fila 1: Descuento técnico de la zona origen
-            sheet_movs.append_row([
-                str(instancia.jornada.fecha), instancia.jornada.controlzonajornada_set.filter(zona=instancia.zona_origen).first().nombre_vendedor,
-                instancia.zona_origen.nombre, instancia.producto.nombre,
-                0, instancia.cantidad, 0, 0
-            ])
-            # Fila 2: Ingreso real a la zona destino con nombre del vendedor receptor
-            sheet_movs.append_row([
-                str(instancia.jornada.fecha), nombre_vendedor,
-                instancia.zona_destino.nombre, instancia.producto.nombre,
-                0, 0, instancia.cantidad, 0
-            ])
-
-        # Registro de Cierre de Jornada y Liquidación de Efectivo
-        elif tipo == 'dinero':
-            sheet_dinero = spreadsheet.worksheet("dinero_entregado")
-            sheet_dinero.append_row([
-                str(instancia.jornada.fecha), instancia.nombre_vendedor,
-                instancia.zona.nombre, float(instancia.dinero_entregado)
-            ])
-            for d in instancia.detalles.all():
-                sheet_movs.append_row([
-                    str(instancia.jornada.fecha), instancia.nombre_vendedor, instancia.zona.nombre,
-                    d.producto.nombre, 0, 0, 0, d.cantidad_llegada
-                ])
-        return True
-    except Exception as e:
-        # Log de error en consola para debugging técnico
-        print(f"Error en sincronización de Google Sheets: {e}")
-        return False
+    return render(request, "gestion_ventas/login.html", {"error": error})
 
 
-# =============================================================================
-# VISTAS DEL PORTAL (VIEWS)
-# =============================================================================
+def logout_view(request):
+    logout(request)
+    return redirect("login")
 
-def portal_vendedor(request):
-    """
-    Punto de entrada para vendedores. Maneja el flujo de trabajo diario:
-    inicio de sesión en zona, envío/recepción de mercancía y cierre.
-    """
-    hoy = timezone.now().date()
-    # Recuperar jornada global configurada por el administrador
-    jornada = Jornada.objects.filter(fecha=hoy, activa=True).first()
 
-    # Si no hay jornada activa, se limpia la sesión y se muestra estado inactivo
-    if not jornada:
-        if 'control_id' in request.session:
-            del request.session['control_id']
-        return render(request, 'gestion_ventas/portal.html', {'jornada': None})
+def redirect_usuario_segun_rol(user):
+    if user.is_superuser:
+        return redirect("/admin/")
+    return redirect("panel_cliente")
 
-    # Recuperar el control específico de este vendedor desde la sesión del navegador
-    control_id = request.session.get('control_id')
-    control = ControlZonaJornada.objects.filter(id=control_id, jornada=jornada).first() if control_id else None
 
-    # Si el vendedor ya cerró su jornada, mostrar resumen de solo lectura
-    if control and control.cerrada:
-        return render(request, 'gestion_ventas/portal.html', {'control': control, 'jornada': jornada})
+def obtener_cliente_usuario(request):
+    if not request.user.is_authenticated or request.user.is_superuser:
+        return None
+    return getattr(request.user, "cliente_profile", None)
 
-    # Procesamiento de Acciones (POST)
-    if request.method == 'POST':
-        accion = request.POST.get('accion')
 
-        # ACCIÓN: Registro de Carga Inicial
-        if accion == 'registrar_salida':
-            zona_id = request.POST.get('zona')
-            nombre_v = request.POST.get('nombre_vendedor_input')
-            zona = Zona.objects.get(id=zona_id)
-
-            control = ControlZonaJornada.objects.create(jornada=jornada, zona=zona, nombre_vendedor=nombre_v)
-            request.session['control_id'] = control.id # Persistencia de sesión
-
-            # Inicializar inventario para cada producto registrado
-            for p in Producto.objects.all():
-                val = request.POST.get(f'prod_salida_{p.id}', '0').replace('.', '')
-                InventarioControl.objects.create(control=control, producto=p, cantidad_salida=int(val) if val else 0)
-
-            sincronizar_a_sheets('movimientos', control)
-            return redirect('portal_vendedor')
-
-        # ACCIÓN: Envío de mercancía a otra zona
-        elif accion == 'enviar_producto' and control:
-            destino_id = request.POST.get('zona_destino')
-            prod_id = request.POST.get('producto_id')
-            cant = int(request.POST.get('cant_envio', '0').replace('.', ''))
-
-            if cant > 0 and destino_id:
-                # El registro se crea como pendiente (aceptado=False)
-                EnvioInterzona.objects.create(
-                    jornada=jornada, zona_origen=control.zona, zona_destino_id=destino_id,
-                    producto_id=prod_id, cantidad=cant, aceptado=False
-                )
-            return redirect('portal_vendedor')
-
-        # ACCIÓN: Confirmación de recepción de mercancía
-        elif accion == 'confirmar_recibo' and control:
-            envio_id = request.POST.get('envio_id')
-            envio = EnvioInterzona.objects.get(id=envio_id)
-            envio.aceptado = True
-            envio.save()
-            # Sincronización oficial a Sheets al existir mutuo acuerdo
-            sincronizar_a_sheets('confirmacion_interzona', envio, nombre_vendedor=control.nombre_vendedor)
-            return redirect('portal_vendedor')
-
-        # ACCIÓN: Cierre final de jornada (Liquidación de inventario y efectivo)
-        elif accion == 'cerrar_jornada' and control:
-            v_dinero = request.POST.get('dinero_entregado', '0').replace('$', '').replace('.', '').strip()
-            control.dinero_entregado = Decimal(v_dinero) if v_dinero else Decimal('0')
-
-            for d in control.detalles.all():
-                v_llegada = request.POST.get(f'prod_llegada_{d.producto.id}', '0').replace('.', '')
-                d.cantidad_llegada = int(v_llegada) if v_llegada else 0
-                d.save()
-
-            control.cerrada = True
-            control.save()
-            sincronizar_a_sheets('dinero', control)
-            del request.session['control_id'] # Finalizar sesión del navegador
-            return render(request, 'gestion_ventas/portal.html', {'control': control, 'jornada': jornada})
-
-    # Preparación del contexto para la interfaz de usuario
-    ocupadas = ControlZonaJornada.objects.filter(jornada=jornada).values_list('zona_id', flat=True)
-    context = {
-        'jornada': jornada,
-        'control': control,
-        'productos': Producto.objects.all(),
-        'zonas_disponibles': Zona.objects.exclude(id__in=ocupadas),
-        'todas_las_zonas': Zona.objects.exclude(id=control.zona.id) if control else Zona.objects.all(),
+def obtener_contexto_negocio(cliente):
+    return {
+        "zonas_qs": cliente.zonas.order_by("nombre"),
+        "productos_qs": cliente.productos.order_by("nombre"),
+        "vendedores_qs": cliente.vendedores.order_by("nombre"),
     }
 
-    # Carga de datos de trazabilidad para visualización en pantalla
-    if control:
-        qs = EnvioInterzona.objects.filter(jornada=jornada)
-        context.update({
-            'envios_realizados': qs.filter(zona_origen=control.zona),
-            'envios_pendientes': qs.filter(zona_destino=control.zona, aceptado=False),
-            'envios_recibidos_totales': qs.filter(zona_destino=control.zona, aceptado=True),
-        })
 
-    return render(request, 'gestion_ventas/portal.html', context)
+def panel_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    hoy = timezone.localdate()
+    jornadas = cliente.jornadas.order_by("-fecha")[:8]
+    controles = (
+        ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
+        .filter(jornada__cliente=cliente)
+        .order_by("-jornada__fecha", "zona__nombre")
+    )
+    context = {
+        "cliente": cliente,
+        "jornadas": jornadas,
+        "jornada_activa": cliente.jornadas.filter(fecha=hoy, activa=True).first(),
+        "total_vendedores": cliente.vendedores.filter(activo=True).count(),
+        "total_zonas": cliente.zonas.filter(activa=True).count(),
+        "total_productos": cliente.productos.filter(activo=True).count(),
+        "adelantos_mes": Adelanto.objects.filter(vendedor__cliente=cliente, fecha__month=hoy.month, fecha__year=hoy.year)
+        .aggregate(total=Sum("monto"))["total"]
+        or 0,
+        "ultimos_controles": controles[:10],
+    }
+    return render(request, "gestion_ventas/panel_cliente.html", context)
+
+
+def jornadas_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    jornadas = cliente.jornadas.order_by("-fecha", "-id")
+    return render(request, "gestion_ventas/jornadas_lista.html", {"cliente": cliente, "jornadas": jornadas})
+
+
+def jornada_crear(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    form = JornadaForm(request.POST or None, initial={"fecha": timezone.localdate(), "activa": True})
+    if request.method == "POST" and form.is_valid():
+        jornada = form.save(commit=False)
+        jornada.cliente = cliente
+        jornada.save()
+        messages.success(request, "La jornada se creó correctamente.")
+        return redirect("jornadas_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/jornada_form.html",
+        {"cliente": cliente, "form": form, "titulo": "Nueva jornada"},
+    )
+
+
+def jornada_editar(request, jornada_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    jornada = get_object_or_404(cliente.jornadas, id=jornada_id)
+    form = JornadaForm(request.POST or None, instance=jornada)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "La jornada fue actualizada.")
+        return redirect("jornadas_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/jornada_form.html",
+        {"cliente": cliente, "form": form, "titulo": "Editar jornada", "jornada": jornada},
+    )
+
+
+def informes_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    controles = (
+        ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
+        .filter(jornada__cliente=cliente)
+        .order_by("-jornada__fecha", "zona__nombre")
+    )
+    return render(request, "gestion_ventas/informes_lista.html", {"cliente": cliente, "controles": controles})
+
+
+def zonas_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    zonas = cliente.zonas.order_by("nombre")
+    form = ZonaForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        zona = form.save(commit=False)
+        zona.cliente = cliente
+        zona.save()
+        messages.success(request, "La zona fue registrada.")
+        return redirect("zonas_cliente")
+
+    return render(request, "gestion_ventas/zonas_lista.html", {"cliente": cliente, "zonas": zonas, "form": form})
+
+
+def productos_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    productos = cliente.productos.order_by("nombre")
+    form = ProductoForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        producto = form.save(commit=False)
+        producto.cliente = cliente
+        producto.save()
+        messages.success(request, "El producto fue registrado.")
+        return redirect("productos_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/productos_lista.html",
+        {"cliente": cliente, "productos": productos, "form": form},
+    )
+
+
+def vendedores_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    zonas = cliente.zonas.order_by("nombre")
+    vendedores = cliente.vendedores.select_related("zona_preferida").order_by("nombre")
+    form = VendedorForm(request.POST or None, zonas=zonas)
+    if request.method == "POST" and form.is_valid():
+        vendedor = form.save(commit=False)
+        vendedor.cliente = cliente
+        vendedor.save()
+        messages.success(request, "El vendedor fue registrado.")
+        return redirect("vendedores_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/vendedores_lista.html",
+        {"cliente": cliente, "vendedores": vendedores, "form": form},
+    )
+
+
+def adelantos_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    vendedores = cliente.vendedores.order_by("nombre")
+    controles = ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor").filter(
+        jornada__cliente=cliente
+    )
+    adelantos = Adelanto.objects.select_related("vendedor", "control__jornada", "control__zona").filter(
+        vendedor__cliente=cliente
+    )
+    form = AdelantoForm(
+        request.POST or None,
+        vendedores=vendedores,
+        controles=controles,
+        initial={"fecha": timezone.localdate()},
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "El adelanto fue registrado.")
+        return redirect("adelantos_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/adelantos_lista.html",
+        {"cliente": cliente, "adelantos": adelantos, "form": form},
+    )
+
+
+def pagos_cliente(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    controles = (
+        ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
+        .prefetch_related("detalles__producto", "adelantos")
+        .filter(jornada__cliente=cliente, cerrada=True)
+        .order_by("-jornada__fecha", "zona__nombre")
+    )
+    return render(request, "gestion_ventas/pagos_lista.html", {"cliente": cliente, "controles": controles})
+
+
+def envios_trazabilidad(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    envios = (
+        EnvioInterzona.objects.select_related("jornada", "producto", "zona_origen", "zona_destino")
+        .filter(jornada__cliente=cliente)
+        .order_by("-fecha")
+    )
+    return render(request, "gestion_ventas/envios_trazabilidad.html", {"cliente": cliente, "envios": envios})
+
+
+def desprendible_pago(request):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    vendedores = cliente.vendedores.filter(activo=True).order_by("nombre")
+    hoy = timezone.localdate()
+    inicio_mes = hoy.replace(day=1)
+    form = DesprendiblePagoForm(
+        request.GET or None,
+        vendedores=vendedores,
+        initial={"fecha_inicio": inicio_mes, "fecha_fin": hoy},
+    )
+
+    controles = ControlZonaJornada.objects.none()
+    adelantos_adicionales = Adelanto.objects.none()
+    filas_diarias = []
+    resumen = None
+
+    if form.is_valid():
+        vendedor = form.cleaned_data.get("vendedor")
+        fecha_inicio = form.cleaned_data.get("fecha_inicio") or inicio_mes
+        fecha_fin = form.cleaned_data.get("fecha_fin") or hoy
+
+        controles = (
+            ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
+            .prefetch_related("detalles__producto", "adelantos")
+            .filter(
+                jornada__cliente=cliente,
+                cerrada=True,
+                jornada__fecha__gte=fecha_inicio,
+                jornada__fecha__lte=fecha_fin,
+            )
+            .order_by("jornada__fecha", "zona__nombre")
+        )
+        if vendedor:
+            controles = controles.filter(vendedor=vendedor)
+
+        adelantos_adicionales = Adelanto.objects.filter(
+            vendedor__cliente=cliente,
+            fecha__gte=fecha_inicio,
+            fecha__lte=fecha_fin,
+            control__isnull=True,
+        ).order_by("fecha")
+        if vendedor:
+            adelantos_adicionales = adelantos_adicionales.filter(vendedor=vendedor)
+
+        total_venta = sum(control.total_venta_esperada for control in controles)
+        total_comision = sum(control.comision_valor for control in controles)
+        total_descuadre = sum(control.descuadre_dinero for control in controles)
+        total_adelantos_vinculados = sum(control.total_adelantos for control in controles)
+        total_adelantos_adicionales = adelantos_adicionales.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        total_pagar = total_comision - total_descuadre - total_adelantos_vinculados - total_adelantos_adicionales
+        if total_pagar < 0:
+            total_pagar = Decimal("0")
+
+        controles_por_fecha = {}
+        for control in controles:
+            controles_por_fecha.setdefault(control.jornada.fecha, []).append(control)
+
+        adelantos_extra_por_fecha = {}
+        for adelanto in adelantos_adicionales:
+            adelantos_extra_por_fecha.setdefault(adelanto.fecha, []).append(adelanto)
+
+        fecha_cursor = fecha_fin
+        while fecha_cursor >= fecha_inicio:
+            controles_dia = controles_por_fecha.get(fecha_cursor, [])
+            adelantos_extra_dia = adelantos_extra_por_fecha.get(fecha_cursor, [])
+            venta_dia = sum(control.total_venta_esperada for control in controles_dia)
+            comision_dia = sum(control.comision_valor for control in controles_dia)
+            descuadre_dia = sum(control.descuadre_dinero for control in controles_dia)
+            adelantos_jornada_dia = sum(control.total_adelantos for control in controles_dia)
+            adelantos_extra_total_dia = sum(adelanto.monto for adelanto in adelantos_extra_dia)
+            pago_dia = comision_dia - descuadre_dia - adelantos_jornada_dia - adelantos_extra_total_dia
+            if pago_dia < 0:
+                pago_dia = Decimal("0")
+
+            filas_diarias.append(
+                {
+                    "fecha": fecha_cursor,
+                    "trabajo": bool(controles_dia),
+                    "zonas": ", ".join(control.zona.nombre for control in controles_dia) or "-",
+                    "venta": venta_dia,
+                    "comision": comision_dia,
+                    "descuadre": descuadre_dia,
+                    "adelantos_jornada": adelantos_jornada_dia,
+                    "adelantos_extra": adelantos_extra_total_dia,
+                    "pago": pago_dia,
+                    "controles": controles_dia,
+                }
+            )
+            fecha_cursor -= timedelta(days=1)
+
+        resumen = {
+            "vendedor": vendedor,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "total_venta": total_venta,
+            "total_comision": total_comision,
+            "total_descuadre": total_descuadre,
+            "total_adelantos_vinculados": total_adelantos_vinculados,
+            "total_adelantos_adicionales": total_adelantos_adicionales,
+            "total_pagar": total_pagar,
+        }
+
+    return render(
+        request,
+        "gestion_ventas/desprendible_pago.html",
+        {
+            "cliente": cliente,
+            "form": form,
+            "controles": controles,
+            "adelantos_adicionales": adelantos_adicionales,
+            "filas_diarias": filas_diarias,
+            "resumen": resumen,
+        },
+    )
+
+
+def informe_editar(request, control_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    control = get_object_or_404(
+        ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor").prefetch_related("detalles__producto"),
+        id=control_id,
+        jornada__cliente=cliente,
+    )
+    form = InformeForm(request.POST or None, instance=control)
+    DetalleFormSet = modelformset_factory(
+        InventarioControl,
+        fields=("cantidad_salida", "cantidad_llegada"),
+        extra=0,
+    )
+    formset = DetalleFormSet(request.POST or None, queryset=control.detalles.select_related("producto"))
+
+    if request.method == "POST" and form.is_valid() and formset.is_valid():
+        form.save()
+        formset.save()
+        messages.success(request, "El informe fue actualizado.")
+        return redirect("informes_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/informe_form.html",
+        {"cliente": cliente, "control": control, "form": form, "formset": formset},
+    )
+
+
+def portal_vendedor(request, token=None):
+    hoy = timezone.localdate()
+    if token is None and not request.user.is_authenticated:
+        return redirect("login")
+
+    cliente = getattr(request.user, "cliente_profile", None) if request.user.is_authenticated else None
+    jornada = obtener_jornada_portal(token=token, fecha=hoy, cliente=cliente if token is None else None)
+
+    if not jornada:
+        request.session.pop("control_id", None)
+        return render(request, "gestion_ventas/portal.html", {"jornada": None})
+
+    control_id = request.session.get("control_id")
+    control = (
+        ControlZonaJornada.objects.select_related("zona", "vendedor", "jornada")
+        .prefetch_related("detalles__producto")
+        .filter(id=control_id, jornada=jornada)
+        .first()
+        if control_id
+        else None
+    )
+
+    if control and control.cerrada:
+        return render(request, "gestion_ventas/portal.html", {"control": control, "jornada": jornada})
+
+    productos = productos_disponibles_para_jornada(jornada)
+    zonas = zonas_disponibles_para_jornada(jornada)
+    vendedores = Vendedor.objects.filter(cliente=jornada.cliente, activo=True) if jornada.cliente_id else Vendedor.objects.none()
+
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+
+        if accion == "registrar_salida":
+            zona_id = request.POST.get("zona")
+            nombre_vendedor = request.POST.get("nombre_vendedor_input", "").strip()
+            vendedor_id = request.POST.get("vendedor")
+
+            zona = zonas.get(id=zona_id)
+            vendedor = vendedores.filter(id=vendedor_id).first() if vendedor_id else None
+            nombre_registrado = vendedor.nombre if vendedor else nombre_vendedor
+
+            control = ControlZonaJornada.objects.create(
+                jornada=jornada,
+                zona=zona,
+                vendedor=vendedor,
+                nombre_vendedor=nombre_registrado,
+            )
+            request.session["control_id"] = control.id
+
+            for producto in productos:
+                valor = request.POST.get(f"prod_salida_{producto.id}", "0").replace(".", "")
+                InventarioControl.objects.create(
+                    control=control,
+                    producto=producto,
+                    cantidad_salida=int(valor) if valor else 0,
+                )
+
+            sincronizar_a_sheets("movimientos", control)
+            return redirect(request.path)
+
+        if accion == "enviar_producto" and control:
+            destino_id = request.POST.get("zona_destino")
+            producto_id = request.POST.get("producto_id")
+            cantidad = int(request.POST.get("cant_envio", "0").replace(".", ""))
+
+            if cantidad > 0 and destino_id and str(control.zona_id) != str(destino_id):
+                EnvioInterzona.objects.create(
+                    jornada=jornada,
+                    zona_origen=control.zona,
+                    zona_destino_id=destino_id,
+                    producto_id=producto_id,
+                    cantidad=cantidad,
+                    aceptado=False,
+                )
+            else:
+                messages.error(request, "El envio debe tener cantidad valida y una zona destino diferente.")
+            return redirect(request.path)
+
+        if accion == "confirmar_recibo" and control:
+            envio_id = request.POST.get("envio_id")
+            envio = get_object_or_404(
+                EnvioInterzona,
+                id=envio_id,
+                jornada=jornada,
+                zona_destino=control.zona,
+                aceptado=False,
+            )
+            envio.aceptado = True
+            envio.save(update_fields=["aceptado"])
+            sincronizar_a_sheets("confirmacion_interzona", envio, nombre_vendedor=control.vendedor_nombre)
+            return redirect(request.path)
+
+        if accion == "rechazar_recibo" and control:
+            envio_id = request.POST.get("envio_id")
+            envio = get_object_or_404(
+                EnvioInterzona,
+                id=envio_id,
+                jornada=jornada,
+                zona_destino=control.zona,
+                aceptado=False,
+            )
+            envio.delete()
+            messages.warning(request, "El envio fue rechazado.")
+            return redirect(request.path)
+
+        if accion == "cerrar_jornada" and control:
+            valor_dinero = request.POST.get("dinero_entregado", "0").replace("$", "").replace(".", "").strip()
+            control.dinero_entregado = Decimal(valor_dinero) if valor_dinero else Decimal("0")
+
+            for detalle in control.detalles.all():
+                valor_llegada = request.POST.get(f"prod_llegada_{detalle.producto.id}", "0").replace(".", "")
+                detalle.cantidad_llegada = int(valor_llegada) if valor_llegada else 0
+                detalle.save(update_fields=["cantidad_llegada"])
+
+            control.cerrada = True
+            control.save(update_fields=["dinero_entregado", "cerrada"])
+            sincronizar_a_sheets("dinero", control)
+            request.session.pop("control_id", None)
+            return render(request, "gestion_ventas/portal.html", {"control": control, "jornada": jornada})
+
+    ocupadas = ControlZonaJornada.objects.filter(jornada=jornada).values_list("zona_id", flat=True)
+    zonas_configuradas = zonas
+    context = {
+        "jornada": jornada,
+        "control": control,
+        "productos": productos,
+        "vendedores": vendedores,
+        "zonas_disponibles": zonas.exclude(id__in=ocupadas),
+        "zonas_configuradas": zonas_configuradas,
+        "zonas_ocupadas_ids": list(ocupadas),
+        "todas_las_zonas": zonas.exclude(id=control.zona.id) if control else zonas,
+    }
+
+    if control:
+        envios = EnvioInterzona.objects.filter(jornada=jornada)
+        context.update(
+            {
+                "envios_realizados": envios.filter(zona_origen=control.zona),
+                "envios_pendientes": envios.filter(zona_destino=control.zona, aceptado=False),
+                "envios_recibidos_totales": envios.filter(zona_destino=control.zona, aceptado=True),
+            }
+        )
+
+    return render(request, "gestion_ventas/portal.html", context)
 
 
 def pagina_gracias(request):
-    """Vista de cortesía al finalizar una sesión."""
-    return render(request, 'gestion_ventas/gracias.html')
+    return render(request, "gestion_ventas/gracias.html")
 
-
-# =============================================================================
-# REPORTES Y EXPORTACIÓN (EXCEL)
-# =============================================================================
 
 def exportar_excel_jornadas(request):
-    """
-    Genera y descarga un archivo .xlsx con el resumen histórico de todas las jornadas.
-    """
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Reporte General Ventas"
+    ws.append(
+        [
+            "FECHA",
+            "CLIENTE",
+            "VENDEDOR",
+            "ZONA",
+            "PRODUCTO",
+            "SALIDA",
+            "ENVIADO",
+            "RECIBIDO",
+            "REGRESO",
+            "VENDIDO",
+            "PRECIO",
+            "VENTA ESPERADA PRODUCTO",
+            "COMISION %",
+            "DINERO ENTREGADO",
+            "ADELANTOS",
+            "DESCUADRE",
+            "PAGO NETO",
+        ]
+    )
 
-    # Encabezados del reporte
-    ws.append(['FECHA', 'VENDEDOR', 'ZONA', 'PRODUCTO', 'SALIDA', 'ENVIADO', 'RECIBIDO', 'REGRESO'])
+    controles = (
+        ControlZonaJornada.objects.select_related("jornada__cliente", "zona", "vendedor")
+        .prefetch_related("detalles__producto")
+        .all()
+    )
 
-    # Consulta optimizada para evitar múltiples accesos a BD
-    controles = ControlZonaJornada.objects.all().select_related('jornada', 'zona').prefetch_related('detalles')
+    for control in controles:
+        for detalle in control.detalles.all():
+            enviados = (
+                EnvioInterzona.objects.filter(
+                    jornada=control.jornada,
+                    zona_origen=control.zona,
+                    producto=detalle.producto,
+                    aceptado=True,
+                ).aggregate(total=Sum("cantidad"))["total"]
+                or 0
+            )
+            recibidos = (
+                EnvioInterzona.objects.filter(
+                    jornada=control.jornada,
+                    zona_destino=control.zona,
+                    producto=detalle.producto,
+                    aceptado=True,
+                ).aggregate(total=Sum("cantidad"))["total"]
+                or 0
+            )
+            vendido = (detalle.cantidad_salida + recibidos) - (enviados + detalle.cantidad_llegada)
+            ws.append(
+                [
+                    control.jornada.fecha.strftime("%d/%m/%Y"),
+                    str(control.jornada.cliente) if control.jornada.cliente_id else "General",
+                    control.vendedor_nombre,
+                    control.zona.nombre,
+                    detalle.producto.nombre,
+                    detalle.cantidad_salida,
+                    enviados,
+                    recibidos,
+                    detalle.cantidad_llegada,
+                    vendido,
+                    detalle.producto.precio_venta,
+                    vendido * detalle.producto.precio_venta,
+                    control.zona.porcentaje_comision,
+                    control.dinero_entregado,
+                    control.total_adelantos,
+                    control.descuadre_dinero,
+                    control.pago_neto,
+                ]
+            )
 
-    for ctrl in controles:
-        for det in ctrl.detalles.all():
-            ws.append([
-                ctrl.jornada.fecha.strftime('%d/%m/%Y'),
-                ctrl.nombre_vendedor,
-                ctrl.zona.nombre,
-                det.producto.nombre,
-                det.cantidad_salida,
-                0, 0, # Estos campos se calculan en RegistroVenta o lógica adicional
-                det.cantidad_llegada
-            ])
-
-    # Configuración de la respuesta HTTP para descarga de archivos
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=ventas_totales.xlsx'
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = "attachment; filename=ventas_totales.xlsx"
     wb.save(response)
     return response

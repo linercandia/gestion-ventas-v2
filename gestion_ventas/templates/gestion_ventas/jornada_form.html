@@ -1,0 +1,24 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>{{ titulo }}</h2>
+    <p>Configura la jornada que vas a compartir con los vendedores del dia.</p>
+</section>
+
+<section class="card">
+    <form method="post" class="form-grid">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Guardar jornada</button>
+            <a class="btn btn-secondary" href="{% url 'jornadas_cliente' %}">Volver</a>
+        </div>
+    </form>
+    {% if jornada %}
+        <p class="muted" style="margin-top: 18px;">Enlace actual para vendedores: {{ jornada.portal_path }}</p>
+    {% endif %}
+</section>
+{% endblock %}

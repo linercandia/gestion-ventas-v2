@@ -1,73 +1,113 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from django.db.models import Sum
-from django.utils import timezone
-from django.contrib import messages
-from .models import Producto, Zona, RegistroVenta, EnvioInterzona, Jornada, ControlZonaJornada
-# Importamos la función actualizada desde tus views
+
+from .models import (
+    Adelanto,
+    Cliente,
+    ControlZonaJornada,
+    EnvioInterzona,
+    Jornada,
+    Producto,
+    RegistroVenta,
+    Vendedor,
+    Zona,
+)
 from .views import exportar_excel_jornadas
+
+
+@admin.register(Cliente)
+class ClienteAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "nombre_comercial", "telefono", "activo")
+    search_fields = ("usuario__username", "nombre_comercial", "telefono")
+    list_filter = ("activo",)
+
+
+@admin.register(Vendedor)
+class VendedorAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "cliente", "zona_preferida", "telefono", "activo")
+    list_filter = ("activo", "cliente", "zona_preferida")
+    search_fields = ("nombre", "telefono", "identificacion")
+
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ('nombre',)
+    list_display = ("nombre", "cliente", "codigo", "unidad_medida", "precio_venta", "activo")
+    list_filter = ("cliente", "activo", "unidad_medida", "formato_visual")
+    search_fields = ("nombre", "codigo")
+
 
 @admin.register(Zona)
 class ZonaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'descripcion')
-    exclude = ('porcentaje_comision',)   
+    list_display = ("nombre", "cliente", "codigo", "porcentaje_comision", "activa")
+    list_filter = ("cliente", "activa")
+    search_fields = ("nombre", "codigo", "descripcion")
+
 
 @admin.register(EnvioInterzona)
 class EnvioInterzonaAdmin(admin.ModelAdmin):
-    list_display = ('fecha', 'producto', 'zona_origen', 'zona_destino', 'cantidad', 'aceptado')
-    list_filter = ('fecha', 'zona_origen', 'zona_destino', 'aceptado')
+    list_display = ("fecha", "jornada", "producto", "zona_origen", "zona_destino", "cantidad", "aceptado")
+    list_filter = ("fecha", "aceptado", "zona_origen", "zona_destino", "jornada")
+    search_fields = ("producto__nombre", "zona_origen__nombre", "zona_destino__nombre")
+
+
+@admin.register(ControlZonaJornada)
+class ControlZonaJornadaAdmin(admin.ModelAdmin):
+    list_display = ("jornada", "zona", "vendedor_nombre", "cerrada", "dinero_entregado", "pago_neto")
+    list_filter = ("cerrada", "jornada", "zona")
+    search_fields = ("nombre_vendedor", "vendedor__nombre", "zona__nombre")
+
+
+@admin.register(Adelanto)
+class AdelantoAdmin(admin.ModelAdmin):
+    list_display = ("fecha", "vendedor", "control", "monto", "motivo")
+    list_filter = ("fecha", "vendedor")
+    search_fields = ("vendedor__nombre", "motivo")
+
 
 @admin.register(Jornada)
 class JornadaAdmin(admin.ModelAdmin):
-    # Mostramos el acceso al portal y el estado de la jornada
-    list_display = ('fecha', 'activa', 'link_del_portal')
-    list_editable = ('activa',)
-    
-    # ACCIÓN PARA GENERAR EL EXCEL CON LAS NUEVAS COLUMNAS
-    # actions = ['descargar_reporte_detallado']
+    list_display = ("fecha", "nombre", "cliente", "activa", "link_del_portal")
+    list_filter = ("activa", "cliente", "fecha")
+    search_fields = ("nombre", "cliente__nombre_comercial", "cliente__usuario__username")
+    readonly_fields = ("ver_link_formulario", "access_token")
+    fields = ("cliente", "nombre", "fecha", "activa", "access_token", "ver_link_formulario")
+    actions = ["descargar_reporte_detallado"]
 
     def descargar_reporte_detallado(self, request, queryset):
-        # Esta función ahora ejecutará el Excel con: 
-        # SALIDA | ENVIO | RECIBIDO | REGRESO | COMISION | etc.
         return exportar_excel_jornadas(request)
-    
-    descargar_reporte_detallado.short_description = "📊 Exportar Informe (Estructura Solicitada)"
 
-    readonly_fields = ('ver_link_formulario',)
-    fields = ('fecha', 'activa', 'ver_link_formulario')
+    descargar_reporte_detallado.short_description = "Exportar informe consolidado"
 
-    # --- LÓGICA DE LINKS (COMO LA TENÍAS) ---
     def link_del_portal(self, obj):
-        url = "/portal/" 
-        return format_html('<a href="{}" target="_blank" style="color: #28a745; font-weight: bold; text-decoration: none;">🚀 Abrir Portal</a>', url)
-    link_del_portal.short_description = "Portal de Ventas"
+        return format_html(
+            '<a href="{}" target="_blank" style="font-weight: 600;">Abrir portal</a>',
+            obj.portal_path,
+        )
+
+    link_del_portal.short_description = "Portal de ventas"
 
     def ver_link_formulario(self, obj):
         if not obj.pk:
-            return "El link aparecerá aquí después de guardar la jornada."
-            
-        url_vendedores = "http://127.0.0.1:8000/portal/"
-        
+            return "El enlace se genera después de guardar la jornada."
+
         return format_html(
-            '<div style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-left: 5px solid #28a745;">'
-            '<strong>Enlace Único para todos los Vendedores:</strong><br>'
-            '<input type="text" value="{}" id="copyLink" style="width: 350px; margin-top: 10px; padding: 8px; border: 1px solid #ccc;" readonly> '
-            '<button type="button" onclick="navigator.clipboard.writeText(\'{}\'); alert(\'¡Link copiado!\');" '
-            'style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">'
-            'Copiar Link</button>'
-            '</div>',
-            url_vendedores, 
-            url_vendedores
+            '<div style="padding: 12px; border: 1px solid #d6d6d6; border-left: 4px solid #0d6efd;">'
+            "<strong>Enlace para vendedores</strong><br>"
+            '<input type="text" value="{}" id="copyLink" style="width: 420px; margin-top: 10px; padding: 8px;" readonly> '
+            '<button type="button" onclick="navigator.clipboard.writeText(\'{}\'); alert(\'Link copiado\');" '
+            'style="background: #0d6efd; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">'
+            "Copiar</button>"
+            '<p style="margin: 10px 0 0; color: #666;">Comparte este enlace con los vendedores para registrar la jornada en tiempo real.</p>'
+            "</div>",
+            obj.portal_path,
+            obj.portal_path,
         )
-    ver_link_formulario.short_description = "Configuración de Acceso"
+
+    ver_link_formulario.short_description = "Acceso del portal"
 
 
-# Mantenemos RegistroVenta por si quieres ver el histórico individual
 @admin.register(RegistroVenta)
 class RegistroVentaAdmin(admin.ModelAdmin):
-    list_display = ('fecha', 'zona', 'producto', 'unidades_vendidas')
-    list_filter = ('fecha', 'zona')
+    list_display = ("fecha", "jornada", "zona", "producto", "unidades_vendidas")
+    list_filter = ("fecha", "jornada", "zona")
+    search_fields = ("zona__nombre", "producto__nombre")

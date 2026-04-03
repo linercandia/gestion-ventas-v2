@@ -1,0 +1,46 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Editar informe{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Editar informe</h2>
+    <p>
+        Jornada {{ control.jornada.fecha }} · Zona {{ control.zona.nombre }}.
+        Aqui puedes ajustar el cierre si hubo correcciones posteriores.
+    </p>
+</section>
+
+<section class="card">
+    <form method="post" class="form-grid">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <h3>Detalle de inventario</h3>
+        {{ formset.management_form }}
+        <table>
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Salida</th>
+                    <th>Regreso</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle_form in formset %}
+                    <tr>
+                        <td>{{ detalle_form.instance.producto.nombre }}{{ detalle_form.id }}</td>
+                        <td>{{ detalle_form.cantidad_salida }}</td>
+                        <td>{{ detalle_form.cantidad_llegada }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="actions">
+            <button class="btn btn-primary" type="submit">Guardar cambios</button>
+            <a class="btn btn-secondary" href="{% url 'informes_cliente' %}">Volver</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

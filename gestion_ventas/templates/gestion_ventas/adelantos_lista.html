@@ -1,0 +1,48 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Adelantos{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Adelantos</h2>
+    <p>Registra adelantos a vendedores. Estos valores se descontaran automaticamente al calcular el pago neto.</p>
+</section>
+
+<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+    <article class="card">
+        <h3>Nuevo adelanto</h3>
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button class="btn btn-primary" type="submit">Guardar adelanto</button>
+        </form>
+    </article>
+    <article class="card">
+        <h3>Movimientos</h3>
+        {% if adelantos %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Vendedor</th>
+                        <th>Monto</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for adelanto in adelantos %}
+                        <tr>
+                            <td>{{ adelanto.fecha }}</td>
+                            <td>{{ adelanto.vendedor.nombre }}</td>
+                            <td>{{ adelanto.monto }}</td>
+                            <td>{{ adelanto.motivo|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">Todavia no se han registrado adelantos.</p>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

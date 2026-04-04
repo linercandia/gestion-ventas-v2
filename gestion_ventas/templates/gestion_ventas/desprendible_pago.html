@@ -107,22 +107,37 @@
         margin-bottom: 8px;
     }
 
-    .receipt-trace-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+    .receipt-trace-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(201, 177, 141, 0.2);
+        border-radius: 14px;
+        overflow: hidden;
     }
 
-    .receipt-trace-item {
-        display: inline-flex;
-        align-items: center;
-        padding: 7px 10px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.82);
-        border: 1px solid rgba(201, 177, 141, 0.22);
-        color: var(--ink);
-        font-size: 0.82rem;
+    .receipt-trace-table th,
+    .receipt-trace-table td {
+        padding: 8px 7px;
+        border-bottom: 1px solid rgba(201, 177, 141, 0.16);
+        font-size: 0.8rem;
+        text-align: left;
+    }
+
+    .receipt-trace-table th {
+        background: rgba(15, 118, 110, 0.08);
+        color: var(--brand-dark);
         font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .receipt-trace-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .receipt-trace-table .money {
+        font-size: 0.82rem;
     }
 
     .receipt-totals-inner {
@@ -258,17 +273,36 @@
             <div class="receipt-totals">
                 <div class="receipt-trace">
                     <div class="receipt-trace-title">Trazabilidad de fechas</div>
-                    <div class="receipt-trace-list">
-                        {% for fila in filas_diarias %}
-                            {% if fila.trabajo %}
-                                <span class="receipt-trace-item">
-                                    {{ fila.fecha|date:"d/m/Y" }}{% if fila.zonas %} | {{ fila.zonas }}{% endif %}
-                                </span>
-                            {% endif %}
-                        {% empty %}
-                            <span class="muted-mini">No hay fechas registradas en este periodo.</span>
-                        {% endfor %}
-                    </div>
+                    <table class="receipt-trace-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Zona</th>
+                                <th>Sueldo</th>
+                                <th>Descuadres</th>
+                                <th>Adelantos</th>
+                                <th>Pagar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fila in filas_diarias %}
+                                {% if fila.trabajo %}
+                                    <tr>
+                                        <td>{{ fila.fecha|date:"d/m/Y" }}</td>
+                                        <td>{{ fila.zonas }}</td>
+                                        <td><span class="money">{{ fila.comision|cop }}</span></td>
+                                        <td><span class="money{% if fila.descuadre > 0 %} negative{% endif %}">{{ fila.descuadre|cop }}</span></td>
+                                        <td><span class="money">{{ fila.adelantos_jornada|add:fila.adelantos_extra|cop }}</span></td>
+                                        <td><span class="money">{{ fila.pago|cop }}</span></td>
+                                    </tr>
+                                {% endif %}
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="muted-mini">No hay registros para este periodo.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
                 <div class="receipt-totals-inner">
                     <div class="receipt-total-line">
@@ -290,44 +324,14 @@
                 </div>
             </div>
 
-            <table class="receipt-table">
-                <colgroup>
-                    <col style="width: 18%;">
-                    <col style="width: 18%;">
-                    <col style="width: 18%;">
-                    <col style="width: 18%;">
-                    <col style="width: 14%;">
-                    <col style="width: 14%;">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Zona</th>
-                        <th>Sueldo</th>
-                        <th>Descuadres</th>
-                        <th>Adelantos</th>
-                        <th>Pagar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fila in filas_diarias %}
-                        {% if fila.trabajo %}
-                            <tr>
-                                <td>{{ fila.fecha|date:"d/m/Y" }}</td>
-                                <td>{{ fila.zonas }}</td>
-                                <td><span class="money">{{ fila.comision|cop }}</span></td>
-                                <td><span class="money{% if fila.descuadre > 0 %} negative{% endif %}">{{ fila.descuadre|cop }}</span></td>
-                                <td><span class="money">{{ fila.adelantos_jornada|add:fila.adelantos_extra|cop }}</span></td>
-                                <td><span class="money">{{ fila.pago|cop }}</span></td>
-                            </tr>
-                        {% endif %}
-                    {% empty %}
-                        <tr>
-                            <td colspan="6" class="muted-mini">No hay registros para este periodo.</td>
-                        </tr>
+            {% if adelantos_adicionales %}
+                <div class="muted-mini" style="padding: 12px 14px;">
+                    Adelantos adicionales del periodo:
+                    {% for adelanto in adelantos_adicionales %}
+                        {{ adelanto.fecha|date:"d/m" }} {{ adelanto.motivo|default:"Adelanto" }} ({{ adelanto.monto|cop }}){% if not forloop.last %}, {% endif %}
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            {% endif %}
         </div>
     </div>
 </section>

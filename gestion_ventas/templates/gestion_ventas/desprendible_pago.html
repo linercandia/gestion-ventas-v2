@@ -87,6 +87,12 @@
         padding: 14px;
         background: linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(217, 119, 6, 0.06));
         border-bottom: 1px solid rgba(201, 177, 141, 0.16);
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .receipt-totals-inner {
+        width: min(100%, 380px);
     }
 
     .receipt-total-line {
@@ -164,6 +170,14 @@
             grid-template-columns: 1fr;
         }
 
+        .receipt-totals {
+            justify-content: stretch;
+        }
+
+        .receipt-totals-inner {
+            width: 100%;
+        }
+
         .receipt-table {
             table-layout: auto;
         }
@@ -207,21 +221,23 @@
             </div>
 
             <div class="receipt-totals">
-                <div class="receipt-total-line">
-                    <span>Sub total sueldos</span>
-                    <strong>{{ resumen.total_comision|cop }}</strong>
-                </div>
-                <div class="receipt-total-line">
-                    <span>Sub total descuadres</span>
-                    <strong class="{% if resumen.total_descuadre > 0 %}negative{% endif %}">{{ resumen.total_descuadre|cop }}</strong>
-                </div>
-                <div class="receipt-total-line">
-                    <span>Sub total adelantos</span>
-                    <strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales|cop }}</strong>
-                </div>
-                <div class="receipt-total-line final">
-                    <span>Total a pagar</span>
-                    <strong>{{ resumen.total_pagar|cop }}</strong>
+                <div class="receipt-totals-inner">
+                    <div class="receipt-total-line">
+                        <span>Sub total sueldos</span>
+                        <strong>{{ resumen.total_comision|cop }}</strong>
+                    </div>
+                    <div class="receipt-total-line">
+                        <span>Sub total descuadres</span>
+                        <strong class="{% if resumen.total_descuadre > 0 %}negative{% endif %}">{{ resumen.total_descuadre|cop }}</strong>
+                    </div>
+                    <div class="receipt-total-line">
+                        <span>Sub total adelantos</span>
+                        <strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales|cop }}</strong>
+                    </div>
+                    <div class="receipt-total-line final">
+                        <span>Total a pagar</span>
+                        <strong>{{ resumen.total_pagar|cop }}</strong>
+                    </div>
                 </div>
             </div>
 

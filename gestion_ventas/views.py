@@ -674,6 +674,22 @@ def informe_editar(request, control_id):
     )
 
 
+def informe_eliminar(request, control_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    control = get_object_or_404(
+        ControlZonaJornada.objects.select_related("jornada"),
+        id=control_id,
+        jornada__cliente=cliente,
+    )
+    if request.method == "POST":
+        control.delete()
+        messages.success(request, "El informe fue eliminado.")
+    return redirect("informes_cliente")
+
+
 def portal_vendedor(request, token=None):
     hoy = timezone.localdate()
     if token is None and not request.user.is_authenticated:

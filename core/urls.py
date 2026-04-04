@@ -43,6 +43,7 @@ urlpatterns = [
     path('panel/envios/', views.envios_trazabilidad, name='envios_trazabilidad'),
     path('panel/informes/', views.informes_cliente, name='informes_cliente'),
     path('panel/informes/<int:control_id>/editar/', views.informe_editar, name='informe_editar'),
+    path('panel/informes/<int:control_id>/eliminar/', views.informe_eliminar, name='informe_eliminar'),
     path('portal/', views.portal_vendedor, name='portal_vendedor'),
     path('portal/<uuid:token>/', views.portal_vendedor, name='portal_vendedor_token'),
     path('gracias/', views.pagina_gracias, name='pagina_gracias'),

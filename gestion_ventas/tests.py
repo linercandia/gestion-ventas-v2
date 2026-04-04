@@ -607,3 +607,16 @@ class PanelClienteTests(TestCase):
         self.assertEqual(fila_rellena["venta_esperada_producto"], Decimal("48000"))
         self.assertEqual(fila_rellena["sueldo"], Decimal("2000"))
         self.assertEqual(fila_rellena["producido"], Decimal("46000"))
+
+    def test_cliente_puede_eliminar_informe_desde_panel(self):
+        user = User.objects.create_user(username="cliente_eliminar_informe", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        control = ControlZonaJornada.objects.create(jornada=jornada, zona=zona, nombre_vendedor="Pablo", cerrada=True)
+
+        self.client.login(username="cliente_eliminar_informe", password="secret123")
+        response = self.client.post(reverse("informe_eliminar", args=[control.id]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ControlZonaJornada.objects.filter(id=control.id).exists())

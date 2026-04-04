@@ -361,15 +361,15 @@ class ControlZonaJornada(models.Model):
 
     @property
     def rentabilidad(self):
-        return self.total_venta_esperada - self.comision_valor
+        return self.venta_real - self.comision_valor
 
     @property
     def producido(self):
-        return self.rentabilidad
+        return self.venta_real - self.comision_valor
 
     @property
     def pico(self):
-        return self.venta_real - self.total_venta_esperada
+        return self.producido - self.total_venta_esperada
 
     def __str__(self):
         estado = "Cerrada" if self.cerrada else "Abierta"

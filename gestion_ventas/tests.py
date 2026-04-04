@@ -567,3 +567,43 @@ class PanelClienteTests(TestCase):
         self.assertEqual(fila["sueldo"], Decimal("23040"))
         self.assertEqual(fila["producido"], Decimal("12960"))
         self.assertEqual(fila["pico"], Decimal("-23040"))
+
+    def test_informe_muestra_producido_por_producto_y_no_total_del_control(self):
+        user = User.objects.create_user(username="cliente_informes_multi", password="secret123")
+        cliente = user.cliente_profile
+        vendedor = Vendedor.objects.create(cliente=cliente, nombre="Pedro")
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+
+        producto_a = Producto.objects.create(cliente=cliente, nombre="Envueltos", unidad_medida="Lb", precio_venta=Decimal("1000"))
+        producto_b = Producto.objects.create(cliente=cliente, nombre="Rellena", unidad_medida="Lb", precio_venta=Decimal("1000"))
+        ZonaProductoComision.objects.create(zona=zona, producto=producto_a, porcentaje_comision=10)
+        ZonaProductoComision.objects.create(zona=zona, producto=producto_b, porcentaje_comision=4)
+
+        control = ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=zona,
+            vendedor=vendedor,
+            nombre_vendedor="Pedro",
+            dinero_entregado=Decimal("52800"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(control=control, producto=producto_a, cantidad_salida=Decimal("6000"), cantidad_llegada=Decimal("1200"))
+        InventarioControl.objects.create(control=control, producto=producto_b, cantidad_salida=Decimal("50000"), cantidad_llegada=Decimal("2000"))
+
+        self.client.login(username="cliente_informes_multi", password="secret123")
+        response = self.client.get(reverse("informes_cliente"), {"fecha": timezone.localdate().isoformat()})
+
+        self.assertEqual(response.status_code, 200)
+        filas = response.context["filas_informe"]
+        self.assertEqual(len(filas), 2)
+        fila_envueltos = next(fila for fila in filas if fila["producto"].nombre == "Envueltos")
+        fila_rellena = next(fila for fila in filas if fila["producto"].nombre == "Rellena")
+
+        self.assertEqual(fila_envueltos["venta_esperada_producto"], Decimal("4800"))
+        self.assertEqual(fila_envueltos["sueldo"], Decimal("600"))
+        self.assertEqual(fila_envueltos["producido"], Decimal("4200"))
+
+        self.assertEqual(fila_rellena["venta_esperada_producto"], Decimal("48000"))
+        self.assertEqual(fila_rellena["sueldo"], Decimal("2000"))
+        self.assertEqual(fila_rellena["producido"], Decimal("46000"))

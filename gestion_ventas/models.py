@@ -293,6 +293,12 @@ class ControlZonaJornada(models.Model):
         porcentaje = self.zona.get_porcentaje_comision_producto(producto)
         return (self.valor_base_pago_producto(producto) * porcentaje) / Decimal("100")
 
+    def producido_producto(self, producto):
+        return self.valor_venta_esperada_producto(producto) - self.sueldo_producto(producto)
+
+    def pico_producto(self, producto):
+        return self.producido_producto(producto) - self.valor_venta_esperada_producto(producto)
+
     def valor_salida_producto(self, detalle):
         return self.valor_capturado_producto(detalle.producto, detalle.cantidad_salida)
 
@@ -361,15 +367,15 @@ class ControlZonaJornada(models.Model):
 
     @property
     def rentabilidad(self):
-        return self.total_venta_esperada - self.comision_valor
+        return sum(self.producido_producto(producto) for producto in self.productos_con_movimiento())
 
     @property
     def producido(self):
-        return self.total_venta_esperada - self.comision_valor
+        return self.rentabilidad
 
     @property
     def pico(self):
-        return self.producido - self.total_venta_esperada
+        return sum(self.pico_producto(producto) for producto in self.productos_con_movimiento())
 
     def __str__(self):
         estado = "Cerrada" if self.cerrada else "Abierta"

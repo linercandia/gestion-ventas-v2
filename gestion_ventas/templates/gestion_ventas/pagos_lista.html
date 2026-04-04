@@ -17,6 +17,7 @@
 <section class="card">
     <h3>Liquidaciones cerradas</h3>
     {% if controles %}
+        <div class="table-shell">
         <table>
             <thead>
                 <tr>
@@ -45,6 +46,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     {% else %}
         <p class="muted">Todavia no hay controles cerrados para calcular pagos.</p>
     {% endif %}

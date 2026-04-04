@@ -5,10 +5,7 @@
 {% block content %}
 <section class="hero">
     <h2>Control diario del negocio</h2>
-    <p>
-        Desde aqui puedes abrir jornadas, compartir el enlace con tus vendedores y revisar
-        el estado de captura en tiempo real sin entrar al admin tecnico de Django.
-    </p>
+    <p>Desde aqui puedes abrir jornadas, compartir el enlace con tus vendedores y revisar el estado de captura en tiempo real</p>
     <div class="actions">
         <a class="btn btn-secondary" href="{% url 'jornada_crear' %}">Crear jornada</a>
         <a class="btn btn-secondary" href="{% url 'informes_cliente' %}">Ver informes</a>
@@ -35,7 +32,7 @@
     </article>
 </section>
 
-<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+<section class="grid split-layout">
     <article class="card">
         <h3>Jornada activa</h3>
         {% if jornada_activa %}
@@ -55,6 +52,7 @@
     <article class="card">
         <h3>Ultimos controles</h3>
         {% if ultimos_controles %}
+            <div class="table-shell">
             <table>
                 <thead>
                     <tr>
@@ -79,6 +77,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         {% else %}
             <p class="muted">Todavia no hay actividad registrada.</p>
         {% endif %}

@@ -247,6 +247,14 @@ def informes_cliente(request):
                 "adelanto": control.total_adelantos,
                 "accion_url": reverse("informe_editar", args=[control.id]),
                 "filas": filas_control,
+                "total_salida": sum(fila["salida"] for fila in filas_control),
+                "total_enviada": sum(fila["enviada"] for fila in filas_control),
+                "total_recibida": sum(fila["recibida"] for fila in filas_control),
+                "total_llegada": sum(fila["llegada"] for fila in filas_control),
+                "total_venta_esperada": sum(fila["venta_esperada_producto"] for fila in filas_control),
+                "total_sueldo": sum(fila["sueldo"] for fila in filas_control),
+                "total_producido": sum(fila["producido"] for fila in filas_control),
+                "total_pico": sum(fila["pico"] for fila in filas_control),
             }
         )
 

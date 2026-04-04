@@ -43,6 +43,11 @@
         border-top: 2px solid rgba(15, 118, 110, 0.14);
     }
 
+    .report-matrix tbody tr.group-total td {
+        background: rgba(15, 118, 110, 0.06);
+        font-weight: 700;
+    }
+
     .report-matrix tbody tr:first-child td {
         border-top: none;
     }
@@ -217,6 +222,31 @@
                             {% endif %}
                         </tr>
                     {% endfor %}
+                    <tr class="group-total">
+                        <td colspan="4" data-label="Total">
+                            <span class="report-main">Total del dia</span>
+                            <span class="report-sub">{{ bloque.fecha|date:"d/m/Y" }} | {{ bloque.vendedor }} | {{ bloque.zona }}</span>
+                        </td>
+                        <td data-label="Salida"><span class="money">{{ bloque.total_salida|cop }}</span></td>
+                        <td data-label="Enviada"><span class="money soft">{{ bloque.total_enviada|cop }}</span></td>
+                        <td data-label="Recibida"><span class="money soft">{{ bloque.total_recibida|cop }}</span></td>
+                        <td data-label="Llegada"><span class="money soft">{{ bloque.total_llegada|cop }}</span></td>
+                        <td data-label="Venta esperada"><span class="money">{{ bloque.total_venta_esperada|cop }}</span></td>
+                        <td data-label="Comision"><span class="tag">Total</span></td>
+                        <td data-label="Sueldo"><span class="money">{{ bloque.total_sueldo|cop }}</span></td>
+                        <td data-label="Producido">
+                            <span class="money{% if bloque.total_producido < 0 %} negative{% endif %}">{{ bloque.total_producido|cop }}</span>
+                        </td>
+                        <td data-label="Pico">
+                            <span class="money{% if bloque.total_pico < 0 %} negative{% endif %}">{{ bloque.total_pico|cop }}</span>
+                        </td>
+                        <td data-label="Cierre">
+                            <div class="day-summary">
+                                <span class="mini">Descuadre {{ bloque.descuadre|cop }}</span>
+                                <span class="mini">Adelanto {{ bloque.adelanto|cop }}</span>
+                            </div>
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>

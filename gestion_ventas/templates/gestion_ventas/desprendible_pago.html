@@ -6,7 +6,7 @@
 {% block content %}
 <section class="hero">
     <h2>Desprendible de pago</h2>
-    <p>Consulta el periodo por vendedor en una tabla compacta, clara y facil de compartir desde celular o PC.</p>
+    <p>Resumen simple del periodo para compartir facilmente con el vendedor.</p>
 </section>
 
 <section class="card">
@@ -19,279 +19,244 @@
 </section>
 
 <style>
-    .slip-summary {
+    .receipt {
+        border: 1px solid rgba(201, 177, 141, 0.24);
+        border-radius: 20px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.84);
+    }
+
+    .receipt-head {
+        background: linear-gradient(180deg, #285c17, #3c741f);
+        color: #fff;
+        padding: 14px 18px;
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .receipt-head h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+    }
+
+    .receipt-body {
+        padding: 0;
+    }
+
+    .receipt-grid {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: 180px 1fr;
+        border-bottom: 1px solid rgba(201, 177, 141, 0.2);
+    }
+
+    .receipt-label,
+    .receipt-value {
+        padding: 10px 14px;
+    }
+
+    .receipt-label {
+        background: #d8ebcd;
+        font-weight: 800;
+        color: #18391a;
+        border-right: 1px solid rgba(201, 177, 141, 0.2);
+    }
+
+    .receipt-value {
+        background: #fff;
+    }
+
+    .receipt-range {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
+        border-bottom: 1px solid rgba(201, 177, 141, 0.2);
+    }
+
+    .receipt-range .receipt-grid {
+        border-bottom: none;
+    }
+
+    .receipt-totals {
+        padding: 14px;
+        background: #d8ebcd;
+        border-bottom: 1px solid rgba(201, 177, 141, 0.2);
+    }
+
+    .receipt-total-line {
+        display: flex;
+        justify-content: space-between;
         gap: 10px;
-        margin-bottom: 16px;
-    }
-
-    .slip-box {
-        background: #f8fafc;
-        border: 1px solid #eadfce;
-        border-radius: 14px;
-        padding: 10px 12px;
-    }
-
-    .slip-box .label {
-        color: var(--muted);
-        font-size: 0.76rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        padding: 4px 0;
         font-weight: 700;
     }
 
-    .slip-box strong {
-        display: block;
-        margin-top: 6px;
-        font-size: 1rem;
-        letter-spacing: -0.03em;
+    .receipt-total-line.final {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(24, 57, 26, 0.18);
+        font-size: 1.02rem;
+        color: #18391a;
     }
 
-    .slip-table {
+    .receipt-table {
         width: 100%;
         table-layout: fixed;
-        border-collapse: separate;
-        border-spacing: 0;
-        border: 1px solid rgba(201, 177, 141, 0.24);
-        border-radius: 18px;
-        overflow: hidden;
-        background: rgba(255, 255, 255, 0.8);
+        border-collapse: collapse;
     }
 
-    .slip-table th {
-        background: rgba(15, 118, 110, 0.08);
-        color: var(--brand-dark);
-        font-size: 0.74rem;
-        letter-spacing: 0.05em;
+    .receipt-table th {
+        background: #285c17;
+        color: #fff;
+        font-size: 0.76rem;
         text-transform: uppercase;
+        letter-spacing: 0.05em;
         padding: 10px 8px;
     }
 
-    .slip-table td {
+    .receipt-table td {
         padding: 10px 8px;
+        border-bottom: 1px solid rgba(201, 177, 141, 0.18);
         vertical-align: top;
         font-size: 0.9rem;
     }
 
-    .slip-main {
-        font-weight: 800;
-        color: var(--ink);
+    .receipt-table tbody tr:last-child td {
+        border-bottom: none;
     }
 
-    .slip-sub {
-        display: block;
-        margin-top: 4px;
-        color: var(--muted);
-        font-size: 0.78rem;
-        line-height: 1.3;
-    }
-
-    .slip-stack {
-        display: grid;
-        gap: 4px;
-    }
-
-    .slip-line {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        align-items: baseline;
-    }
-
-    .slip-line span:first-child {
-        color: var(--muted);
-        font-size: 0.78rem;
+    .money {
         font-weight: 700;
-    }
-
-    .slip-line strong {
-        font-size: 0.9rem;
-        text-align: right;
         white-space: nowrap;
-    }
-
-    .slip-total td {
-        background: rgba(15, 118, 110, 0.06);
-        font-weight: 700;
     }
 
     .negative {
         color: var(--danger);
     }
 
-    @media (max-width: 920px) {
-        .slip-summary {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+    .muted-mini {
+        color: var(--muted);
+        font-size: 0.78rem;
+    }
+
+    @media (max-width: 760px) {
+        .receipt-grid {
+            grid-template-columns: 1fr;
         }
 
-        .slip-table {
+        .receipt-label {
+            border-right: none;
+            border-bottom: 1px solid rgba(201, 177, 141, 0.2);
+        }
+
+        .receipt-range {
+            grid-template-columns: 1fr;
+        }
+
+        .receipt-table {
             table-layout: auto;
         }
 
-        .slip-table th,
-        .slip-table td {
+        .receipt-table th,
+        .receipt-table td {
             padding: 8px 6px;
-            font-size: 0.8rem;
-        }
-
-        .slip-line {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 2px;
-        }
-
-        .slip-line strong {
-            text-align: left;
-        }
-    }
-
-    @media (max-width: 560px) {
-        .slip-summary {
-            grid-template-columns: 1fr;
+            font-size: 0.78rem;
         }
     }
 </style>
 
 {% if resumen %}
-<section class="card" style="padding: 18px;">
-    <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
-        <div>
-            <h3 style="margin:0;">Desprendible</h3>
-            <div class="muted">{{ resumen.vendedor|default:"Todos" }} | {{ resumen.fecha_inicio }} al {{ resumen.fecha_fin }}</div>
+<section class="card">
+    <div class="receipt">
+        <div class="receipt-head">
+            <h3>Desprendible de pago</h3>
+            <strong>{{ resumen.fecha_fin|date:"d/m/Y" }}</strong>
         </div>
-        <div style="text-align:right;">
-            <div class="muted">Total neto a pagar</div>
-            <div class="kpi" style="font-size:1.8rem;"><strong>{{ resumen.total_pagar|cop }}</strong></div>
+
+        <div class="receipt-body">
+            <div class="receipt-grid">
+                <div class="receipt-label">Nombre</div>
+                <div class="receipt-value">{{ resumen.vendedor|default:"Todos" }}</div>
+            </div>
+
+            <div class="receipt-range">
+                <div class="receipt-grid">
+                    <div class="receipt-label">Fecha inicio</div>
+                    <div class="receipt-value">{{ resumen.fecha_inicio|date:"d/m/Y" }}</div>
+                </div>
+                <div class="receipt-grid">
+                    <div class="receipt-label">Fecha fin</div>
+                    <div class="receipt-value">{{ resumen.fecha_fin|date:"d/m/Y" }}</div>
+                </div>
+            </div>
+
+            <div class="receipt-grid">
+                <div class="receipt-label">Dias pagados</div>
+                <div class="receipt-value">{{ resumen.dias_pagados }}</div>
+            </div>
+
+            <div class="receipt-totals">
+                <div class="receipt-total-line">
+                    <span>Sub total sueldos</span>
+                    <strong>{{ resumen.total_comision|cop }}</strong>
+                </div>
+                <div class="receipt-total-line">
+                    <span>Sub total descuadres</span>
+                    <strong class="{% if resumen.total_descuadre > 0 %}negative{% endif %}">{{ resumen.total_descuadre|cop }}</strong>
+                </div>
+                <div class="receipt-total-line">
+                    <span>Sub total adelantos</span>
+                    <strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales|cop }}</strong>
+                </div>
+                <div class="receipt-total-line final">
+                    <span>Total a pagar</span>
+                    <strong>{{ resumen.total_pagar|cop }}</strong>
+                </div>
+            </div>
+
+            <table class="receipt-table">
+                <colgroup>
+                    <col style="width: 18%;">
+                    <col style="width: 18%;">
+                    <col style="width: 18%;">
+                    <col style="width: 18%;">
+                    <col style="width: 14%;">
+                    <col style="width: 14%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Zona</th>
+                        <th>Sueldo</th>
+                        <th>Descuadres</th>
+                        <th>Adelantos</th>
+                        <th>Pagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in filas_diarias %}
+                        {% if fila.trabajo %}
+                            <tr>
+                                <td>{{ fila.fecha|date:"d/m/Y" }}</td>
+                                <td>{{ fila.zonas }}</td>
+                                <td><span class="money">{{ fila.comision|cop }}</span></td>
+                                <td><span class="money{% if fila.descuadre > 0 %} negative{% endif %}">{{ fila.descuadre|cop }}</span></td>
+                                <td><span class="money">{{ fila.adelantos_jornada|add:fila.adelantos_extra|cop }}</span></td>
+                                <td><span class="money">{{ fila.pago|cop }}</span></td>
+                            </tr>
+                        {% endif %}
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="muted-mini">No hay registros para este periodo.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <div class="slip-summary">
-        <div class="slip-box">
-            <span class="label">Base pago</span>
-            <strong>{{ resumen.total_base_pago|cop }}</strong>
-        </div>
-        <div class="slip-box">
-            <span class="label">Venta esperada</span>
-            <strong>{{ resumen.total_venta|cop }}</strong>
-        </div>
-        <div class="slip-box">
-            <span class="label">Sueldo</span>
-            <strong>{{ resumen.total_comision|cop }}</strong>
-        </div>
-        <div class="slip-box">
-            <span class="label">Producido</span>
-            <strong>{{ resumen.total_producido|cop }}</strong>
-        </div>
-        <div class="slip-box">
-            <span class="label">Pico</span>
-            <strong class="{% if resumen.total_pico < 0 %}negative{% endif %}">{{ resumen.total_pico|cop }}</strong>
-        </div>
-    </div>
-
-    <table class="slip-table">
-        <colgroup>
-            <col style="width: 20%;">
-            <col style="width: 16%;">
-            <col style="width: 24%;">
-            <col style="width: 22%;">
-            <col style="width: 18%;">
-        </colgroup>
-        <thead>
-            <tr>
-                <th>Jornada</th>
-                <th>Base y venta</th>
-                <th>Liquidacion</th>
-                <th>Control</th>
-                <th>Pagar</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for fila in filas_diarias %}
-                <tr>
-                    <td>
-                        <span class="slip-main">{{ fila.fecha|date:"d/m/Y" }}</span>
-                        <span class="slip-sub">
-                            {% if fila.trabajo %}
-                                {{ fila.zonas }}
-                            {% else %}
-                                Sin registro
-                            {% endif %}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="slip-stack">
-                            <div class="slip-line"><span>Base pago</span><strong>{{ fila.base_pago|cop }}</strong></div>
-                            <div class="slip-line"><span>Venta esperada</span><strong>{{ fila.venta|cop }}</strong></div>
-                            <div class="slip-line"><span>Venta real</span><strong>{{ fila.venta_real|cop }}</strong></div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="slip-stack">
-                            <div class="slip-line"><span>Sueldo</span><strong>{{ fila.comision|cop }}</strong></div>
-                            <div class="slip-line"><span>Producido</span><strong>{{ fila.producido|cop }}</strong></div>
-                            <div class="slip-line"><span>Pico</span><strong class="{% if fila.pico < 0 %}negative{% endif %}">{{ fila.pico|cop }}</strong></div>
-                        </div>
-                    </td>
-                    <td>
-                        <div class="slip-stack">
-                            <div class="slip-line"><span>Enviado</span><strong>{{ fila.enviado|cop }}</strong></div>
-                            <div class="slip-line"><span>Llegada</span><strong>{{ fila.regreso|cop }}</strong></div>
-                            <div class="slip-line"><span>Descuadre</span><strong class="{% if fila.descuadre > 0 %}negative{% endif %}">{{ fila.descuadre|cop }}</strong></div>
-                            <div class="slip-line"><span>Adelantos</span><strong>{{ fila.adelantos_jornada|add:fila.adelantos_extra|cop }}</strong></div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="slip-main">{{ fila.pago|cop }}</span>
-                        <span class="slip-sub">Neto del dia</span>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr class="slip-total">
-                <td>
-                    <span class="slip-main">Total del periodo</span>
-                    <span class="slip-sub">{{ resumen.fecha_inicio }} al {{ resumen.fecha_fin }}</span>
-                </td>
-                <td>
-                    <div class="slip-stack">
-                        <div class="slip-line"><span>Base pago</span><strong>{{ resumen.total_base_pago|cop }}</strong></div>
-                        <div class="slip-line"><span>Venta esperada</span><strong>{{ resumen.total_venta|cop }}</strong></div>
-                        <div class="slip-line"><span>Venta real</span><strong>{{ resumen.total_venta_real|cop }}</strong></div>
-                    </div>
-                </td>
-                <td>
-                    <div class="slip-stack">
-                        <div class="slip-line"><span>Sueldo</span><strong>{{ resumen.total_comision|cop }}</strong></div>
-                        <div class="slip-line"><span>Producido</span><strong>{{ resumen.total_producido|cop }}</strong></div>
-                        <div class="slip-line"><span>Pico</span><strong class="{% if resumen.total_pico < 0 %}negative{% endif %}">{{ resumen.total_pico|cop }}</strong></div>
-                    </div>
-                </td>
-                <td>
-                    <div class="slip-stack">
-                        <div class="slip-line"><span>Enviado</span><strong>{{ resumen.total_enviado|cop }}</strong></div>
-                        <div class="slip-line"><span>Llegada</span><strong>{{ resumen.total_regreso|cop }}</strong></div>
-                        <div class="slip-line"><span>Descuadre</span><strong class="{% if resumen.total_descuadre > 0 %}negative{% endif %}">{{ resumen.total_descuadre|cop }}</strong></div>
-                        <div class="slip-line"><span>Adelantos</span><strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales|cop }}</strong></div>
-                    </div>
-                </td>
-                <td>
-                    <span class="slip-main">{{ resumen.total_pagar|cop }}</span>
-                    <span class="slip-sub">Neto del periodo</span>
-                </td>
-            </tr>
-        </tfoot>
-    </table>
-
-    {% if adelantos_adicionales %}
-        <div class="muted" style="margin-top:12px; font-size:0.9rem;">
-            Adelantos adicionales del periodo:
-            {% for adelanto in adelantos_adicionales %}
-                {{ adelanto.fecha|date:"d/m" }} {{ adelanto.motivo|default:"Adelanto" }} ({{ adelanto.monto|cop }}){% if not forloop.last %}, {% endif %}
-            {% endfor %}
-        </div>
-    {% endif %}
 </section>
 {% endif %}
 {% endblock %}

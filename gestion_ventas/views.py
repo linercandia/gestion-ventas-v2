@@ -619,10 +619,12 @@ def desprendible_pago(request):
             )
             fecha_cursor -= timedelta(days=1)
 
+        total_dias_pagados = sum(1 for fila in filas_diarias if fila["trabajo"])
         resumen = {
             "vendedor": vendedor,
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
+            "dias_pagados": total_dias_pagados,
             "total_venta": total_venta,
             "total_base_pago": total_base_pago,
             "total_enviado": total_enviado,

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -35,7 +36,7 @@ class PortalJornadaTests(TestCase):
         cliente = user.cliente_profile
         jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
 
-        self.assertTrue(jornada.portal_url.startswith("http://127.0.0.1:8000/portal/"))
+        self.assertTrue(jornada.portal_url.startswith(f"{settings.APP_BASE_URL}/portal/"))
 
     def test_portal_publico_muestra_vendedores_del_negocio(self):
         user = User.objects.create_user(username="cliente_vendedores", password="secret123")
@@ -430,10 +431,11 @@ class PanelClienteTests(TestCase):
         self.assertEqual(response.context["filas_diarias"][1]["fecha"], fecha_fin - timedelta(days=1))
         self.assertEqual(response.context["filas_diarias"][2]["fecha"], fecha_inicio)
         self.assertFalse(response.context["filas_diarias"][1]["trabajo"])
-        self.assertEqual(response.context["resumen"]["total_venta"], Decimal("50000"))
+        self.assertEqual(response.context["resumen"]["total_base_pago"], Decimal("50000"))
+        self.assertEqual(response.context["resumen"]["total_venta"], Decimal("40000"))
         self.assertEqual(response.context["resumen"]["total_venta_real"], Decimal("35000"))
         self.assertEqual(response.context["resumen"]["total_regreso"], Decimal("10000"))
-        self.assertEqual(response.context["resumen"]["total_comision"], Decimal("4000"))
+        self.assertEqual(response.context["resumen"]["total_comision"], Decimal("5000"))
         self.assertEqual(response.context["resumen"]["total_descuadre"], Decimal("5000"))
         self.assertEqual(response.context["resumen"]["total_adelantos_vinculados"], Decimal("1000"))
         self.assertEqual(response.context["resumen"]["total_adelantos_adicionales"], Decimal("500"))
@@ -456,13 +458,15 @@ class PanelClienteTests(TestCase):
         InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
         Adelanto.objects.create(vendedor=user.cliente_profile.vendedores.create(nombre="Ana"), control=control, monto=Decimal("2000"))
 
-        self.assertEqual(control.total_venta_esperada, Decimal("50000"))
+        self.assertEqual(control.total_base_pago, Decimal("50000"))
+        self.assertEqual(control.total_venta_esperada, Decimal("40000"))
         self.assertEqual(control.total_venta_objetivo, Decimal("40000"))
         self.assertEqual(control.venta_real, Decimal("35000"))
-        self.assertEqual(control.comision_valor, Decimal("4000"))
+        self.assertEqual(control.comision_valor, Decimal("5000"))
         self.assertEqual(control.descuadre_dinero, Decimal("5000"))
         self.assertEqual(control.total_adelantos, Decimal("2000"))
-        self.assertEqual(control.rentabilidad, Decimal("31000"))
+        self.assertEqual(control.rentabilidad, Decimal("30000"))
+        self.assertEqual(control.pico, Decimal("-5000"))
         self.assertEqual(control.pago_neto, 0)
 
     def test_comision_valor_usa_porcentaje_por_producto_en_zona(self):
@@ -481,5 +485,80 @@ class PanelClienteTests(TestCase):
         )
         InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
 
-        self.assertEqual(control.total_venta_esperada, Decimal("50000"))
-        self.assertEqual(control.comision_valor, Decimal("8000"))
+        self.assertEqual(control.total_venta_esperada, Decimal("40000"))
+        self.assertEqual(control.comision_valor, Decimal("10000"))
+
+    def test_producto_en_pesos_no_multiplica_por_precio_venta(self):
+        user = User.objects.create_user(username="cliente_pago_pesos", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Porvenir", porcentaje_comision=10)
+        producto = Producto.objects.create(
+            cliente=cliente,
+            nombre="Rellena",
+            unidad_medida="Lb",
+            precio_venta=Decimal("6000"),
+        )
+        ZonaProductoComision.objects.create(zona=zona, producto=producto, porcentaje_comision=38.4)
+        control = ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=zona,
+            nombre_vendedor="Pablo",
+            dinero_entregado=Decimal("18000"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(
+            control=control,
+            producto=producto,
+            cantidad_salida=Decimal("60000"),
+            cantidad_llegada=Decimal("24000"),
+        )
+
+        self.assertEqual(control.total_base_pago, Decimal("60000"))
+        self.assertEqual(control.total_venta_esperada, Decimal("36000"))
+        self.assertEqual(control.total_venta_objetivo, Decimal("36000"))
+        self.assertEqual(control.venta_real, Decimal("18000"))
+        self.assertEqual(control.comision_valor, Decimal("23040"))
+        self.assertEqual(control.descuadre_dinero, Decimal("18000"))
+
+    def test_informes_filtra_y_muestra_metricas_por_producto(self):
+        user = User.objects.create_user(username="cliente_informes", password="secret123")
+        cliente = user.cliente_profile
+        vendedor = Vendedor.objects.create(cliente=cliente, nombre="Pablo")
+        otra_zona = Zona.objects.create(cliente=cliente, nombre="Norte", activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Porvenir", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Rellena", unidad_medida="Lb", precio_venta=Decimal("6000"))
+        ZonaProductoComision.objects.create(zona=zona, producto=producto, porcentaje_comision=38.4)
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        control = ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=zona,
+            vendedor=vendedor,
+            nombre_vendedor="Pablo",
+            dinero_entregado=Decimal("18000"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=Decimal("60000"), cantidad_llegada=Decimal("24000"))
+        ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=otra_zona,
+            nombre_vendedor="Otro",
+            dinero_entregado=Decimal("50000"),
+            cerrada=True,
+        )
+
+        self.client.login(username="cliente_informes", password="secret123")
+        response = self.client.get(
+            reverse("informes_cliente"),
+            {"fecha": timezone.localdate().isoformat(), "vendedor": vendedor.id, "zona": zona.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["filas_informe"]), 1)
+        fila = response.context["filas_informe"][0]
+        self.assertEqual(fila["salida"], Decimal("60000"))
+        self.assertEqual(fila["llegada"], Decimal("24000"))
+        self.assertEqual(fila["venta_esperada_producto"], Decimal("36000"))
+        self.assertEqual(fila["sueldo"], Decimal("23040"))
+        self.assertEqual(fila["producido"], Decimal("0"))
+        self.assertEqual(fila["pico"], Decimal("-18000"))

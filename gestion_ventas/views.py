@@ -13,6 +13,7 @@ from django.utils import timezone
 from .forms import (
     AdelantoForm,
     DesprendiblePagoForm,
+    InformeFiltroForm,
     InformeForm,
     JornadaForm,
     ProductoForm,
@@ -184,12 +185,60 @@ def informes_cliente(request):
     if cliente is None:
         return redirect("login")
 
+    vendedores = cliente.vendedores.filter(activo=True).order_by("nombre")
+    zonas = cliente.zonas.filter(activa=True).order_by("nombre")
+    form = InformeFiltroForm(request.GET or None, vendedores=vendedores, zonas=zonas)
     controles = (
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
+        .prefetch_related("detalles__producto", "adelantos")
         .filter(jornada__cliente=cliente)
         .order_by("-jornada__fecha", "zona__nombre")
     )
-    return render(request, "gestion_ventas/informes_lista.html", {"cliente": cliente, "controles": controles})
+    if form.is_valid():
+        fecha = form.cleaned_data.get("fecha")
+        vendedor = form.cleaned_data.get("vendedor")
+        zona = form.cleaned_data.get("zona")
+        if fecha:
+            controles = controles.filter(jornada__fecha=fecha)
+        if vendedor:
+            controles = controles.filter(vendedor=vendedor)
+        if zona:
+            controles = controles.filter(zona=zona)
+
+    filas_informe = []
+    for control in controles:
+        productos = control.productos_con_movimiento()
+        if not productos:
+            continue
+        for indice, producto in enumerate(productos):
+            filas_informe.append(
+                {
+                    "control": control,
+                    "producto": producto,
+                    "fecha": control.jornada.fecha,
+                    "vendedor": control.vendedor_nombre,
+                    "zona": control.zona.nombre,
+                    "salida": control.valor_capturado_producto(producto, control.cantidad_salida_producto(producto)),
+                    "enviada": control.valor_capturado_producto(producto, control.cantidad_enviada_producto(producto)),
+                    "recibida": control.valor_capturado_producto(producto, control.cantidad_recibida_producto(producto)),
+                    "llegada": control.valor_capturado_producto(producto, control.cantidad_llegada_producto(producto)),
+                    "venta_esperada_producto": control.valor_venta_esperada_producto(producto),
+                    "comision_porcentaje": control.zona.get_porcentaje_comision_producto(producto),
+                    "sueldo": control.sueldo_producto(producto),
+                    "producido": control.producido,
+                    "pico": control.pico,
+                    "descuadre": control.descuadre_dinero,
+                    "adelanto": control.total_adelantos,
+                    "rowspan": len(productos),
+                    "es_primera": indice == 0,
+                }
+            )
+
+    return render(
+        request,
+        "gestion_ventas/informes_lista.html",
+        {"cliente": cliente, "form": form, "filas_informe": filas_informe, "controles": controles},
+    )
 
 
 def zonas_cliente(request):
@@ -480,6 +529,7 @@ def desprendible_pago(request):
             adelantos_adicionales = adelantos_adicionales.filter(vendedor=vendedor)
 
         total_venta = sum(control.total_venta_esperada for control in controles)
+        total_base_pago = sum(control.total_base_pago for control in controles)
         total_enviado = sum(control.total_enviado_valorizado for control in controles)
         total_regreso = sum(control.total_regreso_valorizado for control in controles)
         total_venta_real = sum(control.venta_real for control in controles)
@@ -504,6 +554,7 @@ def desprendible_pago(request):
             controles_dia = controles_por_fecha.get(fecha_cursor, [])
             adelantos_extra_dia = adelantos_extra_por_fecha.get(fecha_cursor, [])
             venta_dia = sum(control.total_venta_esperada for control in controles_dia)
+            base_pago_dia = sum(control.total_base_pago for control in controles_dia)
             comision_dia = sum(control.comision_valor for control in controles_dia)
             descuadre_dia = sum(control.descuadre_dinero for control in controles_dia)
             adelantos_jornada_dia = sum(control.total_adelantos for control in controles_dia)
@@ -518,6 +569,7 @@ def desprendible_pago(request):
                     "trabajo": bool(controles_dia),
                     "zonas": ", ".join(control.zona.nombre for control in controles_dia) or "-",
                     "venta": venta_dia,
+                    "base_pago": base_pago_dia,
                     "enviado": sum(control.total_enviado_valorizado for control in controles_dia),
                     "regreso": sum(control.total_regreso_valorizado for control in controles_dia),
                     "venta_real": sum(control.venta_real for control in controles_dia),
@@ -536,6 +588,7 @@ def desprendible_pago(request):
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "total_venta": total_venta,
+            "total_base_pago": total_base_pago,
             "total_enviado": total_enviado,
             "total_regreso": total_regreso,
             "total_venta_real": total_venta_real,
@@ -755,12 +808,14 @@ def exportar_excel_jornadas(request):
             "SALIDA",
             "ENVIADO",
             "RECIBIDO",
-            "REGRESO",
-            "VENDIDO",
-            "PRECIO",
+            "LLEGADA",
+            "BASE PAGO",
             "VENTA ESPERADA PRODUCTO",
             "COMISION %",
+            "SUELDO",
             "DINERO ENTREGADO",
+            "PRODUCIDO",
+            "PICO",
             "ADELANTOS",
             "DESCUADRE",
             "PAGO NETO",
@@ -774,42 +829,25 @@ def exportar_excel_jornadas(request):
     )
 
     for control in controles:
-        for detalle in control.detalles.all():
-            enviados = (
-                EnvioInterzona.objects.filter(
-                    jornada=control.jornada,
-                    zona_origen=control.zona,
-                    producto=detalle.producto,
-                    aceptado=True,
-                ).aggregate(total=Sum("cantidad"))["total"]
-                or 0
-            )
-            recibidos = (
-                EnvioInterzona.objects.filter(
-                    jornada=control.jornada,
-                    zona_destino=control.zona,
-                    producto=detalle.producto,
-                    aceptado=True,
-                ).aggregate(total=Sum("cantidad"))["total"]
-                or 0
-            )
-            vendido = (detalle.cantidad_salida + recibidos) - (enviados + detalle.cantidad_llegada)
+        for producto in control.productos_con_movimiento():
             ws.append(
                 [
                     control.jornada.fecha.strftime("%d/%m/%Y"),
                     str(control.jornada.cliente) if control.jornada.cliente_id else "General",
                     control.vendedor_nombre,
                     control.zona.nombre,
-                    detalle.producto.nombre,
-                    detalle.cantidad_salida,
-                    enviados,
-                    recibidos,
-                    detalle.cantidad_llegada,
-                    vendido,
-                    detalle.producto.precio_venta,
-                    vendido * detalle.producto.precio_venta,
-                    control.zona.get_porcentaje_comision_producto(detalle.producto),
+                    producto.nombre,
+                    control.valor_capturado_producto(producto, control.cantidad_salida_producto(producto)),
+                    control.valor_capturado_producto(producto, control.cantidad_enviada_producto(producto)),
+                    control.valor_capturado_producto(producto, control.cantidad_recibida_producto(producto)),
+                    control.valor_capturado_producto(producto, control.cantidad_llegada_producto(producto)),
+                    control.valor_base_pago_producto(producto),
+                    control.valor_venta_esperada_producto(producto),
+                    control.zona.get_porcentaje_comision_producto(producto),
+                    control.sueldo_producto(producto),
                     control.dinero_entregado,
+                    control.producido,
+                    control.pico,
                     control.total_adelantos,
                     control.descuadre_dinero,
                     control.pago_neto,

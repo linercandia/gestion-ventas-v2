@@ -1,5 +1,7 @@
 import uuid
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Sum
@@ -100,7 +102,7 @@ class Zona(models.Model):
         ordering = ["nombre"]
 
     def __str__(self):
-        return f"{self.nombre} ({self.porcentaje_comision}%)"
+        return self.nombre
 
     def get_porcentaje_comision_producto(self, producto):
         relacion = self.comisiones_producto.filter(producto=producto).first()
@@ -232,22 +234,76 @@ class ControlZonaJornada(models.Model):
             or 0
         )
 
-    def unidades_vendidas_producto(self, detalle):
-        return (detalle.cantidad_salida + self.cantidad_recibida_producto(detalle.producto)) - (
-            self.cantidad_enviada_producto(detalle.producto) + detalle.cantidad_llegada
+    def detalle_producto(self, producto):
+        return self.detalles.select_related("producto").filter(producto=producto).first()
+
+    def cantidad_salida_producto(self, producto):
+        detalle = self.detalle_producto(producto)
+        return detalle.cantidad_salida if detalle else 0
+
+    def cantidad_llegada_producto(self, producto):
+        detalle = self.detalle_producto(producto)
+        return detalle.cantidad_llegada if detalle else 0
+
+    def productos_con_movimiento(self):
+        productos = []
+        vistos = set()
+
+        for detalle in self.detalles.select_related("producto").all():
+            if detalle.producto_id not in vistos:
+                productos.append(detalle.producto)
+                vistos.add(detalle.producto_id)
+
+        envios = EnvioInterzona.objects.filter(
+            jornada=self.jornada,
+            aceptado=True,
+        ).filter(models.Q(zona_origen=self.zona) | models.Q(zona_destino=self.zona)).select_related("producto")
+
+        for envio in envios:
+            if envio.producto_id not in vistos:
+                productos.append(envio.producto)
+                vistos.add(envio.producto_id)
+
+        return productos
+
+    def valor_capturado_producto(self, producto, cantidad):
+        if producto.formato_captura == "moneda":
+            return cantidad
+        return cantidad * producto.precio_venta
+
+    def base_pago_producto(self, producto):
+        base = (
+            self.cantidad_salida_producto(producto)
+            + self.cantidad_recibida_producto(producto)
+            - self.cantidad_enviada_producto(producto)
         )
+        return base if base > 0 else 0
+
+    def venta_esperada_producto(self, producto):
+        venta = self.base_pago_producto(producto) - self.cantidad_llegada_producto(producto)
+        return venta if venta > 0 else 0
+
+    def valor_base_pago_producto(self, producto):
+        return self.valor_capturado_producto(producto, self.base_pago_producto(producto))
+
+    def valor_venta_esperada_producto(self, producto):
+        return self.valor_capturado_producto(producto, self.venta_esperada_producto(producto))
+
+    def sueldo_producto(self, producto):
+        porcentaje = self.zona.get_porcentaje_comision_producto(producto)
+        return (self.valor_base_pago_producto(producto) * porcentaje) / Decimal("100")
 
     def valor_salida_producto(self, detalle):
-        return detalle.cantidad_salida * detalle.producto.precio_venta
+        return self.valor_capturado_producto(detalle.producto, detalle.cantidad_salida)
 
     def valor_recibido_producto(self, detalle):
-        return self.cantidad_recibida_producto(detalle.producto) * detalle.producto.precio_venta
+        return self.valor_capturado_producto(detalle.producto, self.cantidad_recibida_producto(detalle.producto))
 
     def valor_enviado_producto(self, detalle):
-        return self.cantidad_enviada_producto(detalle.producto) * detalle.producto.precio_venta
+        return self.valor_capturado_producto(detalle.producto, self.cantidad_enviada_producto(detalle.producto))
 
     def valor_regreso_producto(self, detalle):
-        return detalle.cantidad_llegada * detalle.producto.precio_venta
+        return self.valor_capturado_producto(detalle.producto, detalle.cantidad_llegada)
 
     @property
     def total_salida_valorizada(self):
@@ -267,12 +323,15 @@ class ControlZonaJornada(models.Model):
 
     @property
     def total_venta_esperada(self):
-        return self.total_salida_valorizada + self.total_recibido_valorizado
+        return sum(self.valor_venta_esperada_producto(producto) for producto in self.productos_con_movimiento())
+
+    @property
+    def total_base_pago(self):
+        return sum(self.valor_base_pago_producto(producto) for producto in self.productos_con_movimiento())
 
     @property
     def total_venta_objetivo(self):
-        total = self.total_venta_esperada - self.total_enviado_valorizado - self.total_regreso_valorizado
-        return total if total > 0 else 0
+        return self.total_venta_esperada
 
     @property
     def venta_real(self):
@@ -284,12 +343,7 @@ class ControlZonaJornada(models.Model):
 
     @property
     def comision_valor(self):
-        total = 0
-        for detalle in self.detalles.select_related("producto").all():
-            venta_producto = self.unidades_vendidas_producto(detalle) * detalle.producto.precio_venta
-            porcentaje = self.zona.get_porcentaje_comision_producto(detalle.producto)
-            total += (venta_producto * porcentaje) / 100
-        return total
+        return sum(self.sueldo_producto(producto) for producto in self.productos_con_movimiento())
 
     @property
     def total_adelantos(self):
@@ -307,8 +361,16 @@ class ControlZonaJornada(models.Model):
 
     @property
     def rentabilidad(self):
-        rentabilidad = self.venta_real - self.comision_valor
-        return rentabilidad if rentabilidad > 0 else 0
+        producido = self.venta_real - self.comision_valor
+        return producido if producido > 0 else 0
+
+    @property
+    def producido(self):
+        return self.rentabilidad
+
+    @property
+    def pico(self):
+        return self.venta_real - self.total_venta_esperada
 
     def __str__(self):
         estado = "Cerrada" if self.cerrada else "Abierta"

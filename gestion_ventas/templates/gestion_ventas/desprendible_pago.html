@@ -32,11 +32,15 @@
 
     <div style="display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:10px; margin-bottom:14px;">
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
+            <div class="muted">Base pago</div>
+            <strong>{{ resumen.total_base_pago }}</strong>
+        </div>
+        <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
             <div class="muted">Venta esperada</div>
             <strong>{{ resumen.total_venta }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
-            <div class="muted">Comision</div>
+            <div class="muted">Sueldo</div>
             <strong>{{ resumen.total_comision }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
@@ -55,11 +59,12 @@
                 <tr>
                     <th>Fecha</th>
                     <th>Zona</th>
+                    <th>Base pago</th>
                     <th>Venta esperada</th>
                     <th>Enviado</th>
-                    <th>Regreso</th>
-                    <th>Venta</th>
-                    <th>Comision</th>
+                    <th>Llegada</th>
+                    <th>Venta real</th>
+                    <th>Sueldo</th>
                     <th>Descuadre</th>
                     <th>Adelantos</th>
                     <th>Pagar</th>
@@ -76,6 +81,7 @@
                                 <span class="muted">Sin registro</span>
                             {% endif %}
                         </td>
+                        <td>{{ fila.base_pago }}</td>
                         <td>{{ fila.venta }}</td>
                         <td>{{ fila.enviado }}</td>
                         <td>{{ fila.regreso }}</td>
@@ -90,6 +96,7 @@
             <tfoot>
                 <tr>
                     <th colspan="2">Total del periodo</th>
+                    <th>{{ resumen.total_base_pago }}</th>
                     <th>{{ resumen.total_venta }}</th>
                     <th>{{ resumen.total_enviado }}</th>
                     <th>{{ resumen.total_regreso }}</th>

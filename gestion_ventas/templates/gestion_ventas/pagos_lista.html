@@ -6,8 +6,8 @@
 <section class="hero">
     <h2>Pagos a vendedores</h2>
     <p>
-        El sistema toma la venta esperada segun producto y precio, aplica la comision de la zona,
-        descuenta adelantos y resta el descuadre cuando el dinero entregado es menor al esperado.
+        El pago se calcula por producto con la base de salida mas recibido menos enviado, aplica la comision
+        configurada por zona y producto, y despues descuenta adelantos y descuadres.
     </p>
     <div class="actions">
         <a class="btn btn-secondary" href="{% url 'desprendible_pago' %}">Ver desprendible de pago</a>
@@ -24,11 +24,12 @@
                     <th>Fecha</th>
                     <th>Vendedor</th>
                     <th>Zona</th>
+                    <th>Base pago</th>
                     <th>Venta esperada</th>
                     <th>Enviado</th>
-                    <th>Regreso</th>
-                    <th>Venta</th>
-                    <th>Comision calculada</th>
+                    <th>Llegada</th>
+                    <th>Venta real</th>
+                    <th>Sueldo</th>
                     <th>Adelantos</th>
                     <th>Descuadre</th>
                     <th>Pago neto</th>
@@ -40,11 +41,12 @@
                         <td>{{ control.jornada.fecha }}</td>
                         <td>{{ control.vendedor_nombre }}</td>
                         <td>{{ control.zona.nombre }}</td>
+                        <td>{{ control.total_base_pago }}</td>
                         <td>{{ control.total_venta_esperada }}</td>
                         <td>{{ control.total_enviado_valorizado }}</td>
                         <td>{{ control.total_regreso_valorizado }}</td>
                         <td>{{ control.venta_real }}</td>
-                        <td>{{ control.comision_valor }} (segun % por producto)</td>
+                        <td>{{ control.comision_valor }}</td>
                         <td>{{ control.total_adelantos }}</td>
                         <td>{{ control.descuadre_dinero }}</td>
                         <td><strong>{{ control.pago_neto }}</strong></td>

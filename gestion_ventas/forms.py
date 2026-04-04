@@ -85,6 +85,21 @@ class DesprendiblePagoForm(forms.Form):
             self.fields["vendedor"].queryset = vendedores
 
 
+class InformeFiltroForm(forms.Form):
+    fecha = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    vendedor = forms.ModelChoiceField(queryset=Vendedor.objects.none(), required=False)
+    zona = forms.ModelChoiceField(queryset=Zona.objects.none(), required=False)
+
+    def __init__(self, *args, **kwargs):
+        vendedores = kwargs.pop("vendedores", None)
+        zonas = kwargs.pop("zonas", None)
+        super().__init__(*args, **kwargs)
+        if vendedores is not None:
+            self.fields["vendedor"].queryset = vendedores
+        if zonas is not None:
+            self.fields["zona"].queryset = zonas
+
+
 class ZonaProductoComisionForm(forms.Form):
     producto_id = forms.IntegerField(widget=forms.HiddenInput)
     producto_nombre = forms.CharField(disabled=True, required=False)

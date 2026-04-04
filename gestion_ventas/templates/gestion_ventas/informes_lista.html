@@ -5,52 +5,75 @@
 {% block content %}
 <section class="hero">
     <h2>Informes operativos</h2>
-    <p>Consulta los cierres por zona y abre cualquier registro para corregir vendedor, dinero o cantidades del inventario.</p>
+    <p>Revisa cada jornada por producto, con su comision, sueldo, producido, pico, descuadre y adelantos del dia.</p>
 </section>
 
 <section class="card">
-    <h3>Controles por jornada</h3>
-    {% if controles %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Zona</th>
-                    <th>Vendedor</th>
-                    <th>Venta esperada</th>
-                    <th>Enviado</th>
-                    <th>Regreso</th>
-                    <th>Venta</th>
-                    <th>Rentabilidad</th>
-                    <th>Descuadre</th>
-                    <th>Estado</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for control in controles %}
+    <form method="get" class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items: end;">
+        <div>{{ form.fecha.label_tag }}{{ form.fecha }}</div>
+        <div>{{ form.vendedor.label_tag }}{{ form.vendedor }}</div>
+        <div>{{ form.zona.label_tag }}{{ form.zona }}</div>
+        <div><button class="btn btn-primary" type="submit">Filtrar</button></div>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Trazabilidad por producto</h3>
+    {% if filas_informe %}
+        <div class="table-shell">
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ control.jornada.fecha }}</td>
-                        <td>{{ control.zona.nombre }}</td>
-                        <td>{{ control.vendedor_nombre }}</td>
-                        <td>{{ control.total_venta_esperada }}</td>
-                        <td>{{ control.total_enviado_valorizado }}</td>
-                        <td>{{ control.total_regreso_valorizado }}</td>
-                        <td>{{ control.venta_real }}</td>
-                        <td>{{ control.rentabilidad }}</td>
-                        <td>{{ control.descuadre_dinero }}</td>
-                        <td>
-                            <span class="status{% if not control.cerrada %} off{% endif %}">
-                                {% if control.cerrada %}Cerrado{% else %}Abierto{% endif %}
-                            </span>
-                        </td>
-                        <td><a class="btn btn-secondary" href="{% url 'informe_editar' control.id %}">Modificar</a></td>
+                        <th>Fecha</th>
+                        <th>Vendedor</th>
+                        <th>Zona</th>
+                        <th>Producto</th>
+                        <th>Salida</th>
+                        <th>Enviada</th>
+                        <th>Recibida</th>
+                        <th>Llegada</th>
+                        <th>Venta esperada</th>
+                        <th>% comision</th>
+                        <th>Sueldo</th>
+                        <th>Producido</th>
+                        <th>Pico</th>
+                        <th>Descuadre</th>
+                        <th>Adelanto</th>
+                        <th></th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for fila in filas_informe %}
+                        <tr>
+                            {% if fila.es_primera %}
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.fecha|date:"d/m/Y" }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.vendedor }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.zona }}</td>
+                            {% endif %}
+                            <td>{{ fila.producto.nombre }}</td>
+                            <td>{{ fila.salida }}</td>
+                            <td>{{ fila.enviada }}</td>
+                            <td>{{ fila.recibida }}</td>
+                            <td>{{ fila.llegada }}</td>
+                            <td>{{ fila.venta_esperada_producto }}</td>
+                            <td>{{ fila.comision_porcentaje }}%</td>
+                            <td>{{ fila.sueldo }}</td>
+                            {% if fila.es_primera %}
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.producido }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.pico }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.descuadre }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.adelanto }}</td>
+                                <td rowspan="{{ fila.rowspan }}">
+                                    <a class="btn btn-secondary" href="{% url 'informe_editar' fila.control.id %}">Modificar</a>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
-        <p class="muted">Aun no existen informes para este cliente.</p>
+        <p class="muted">No hay registros para los filtros seleccionados.</p>
     {% endif %}
 </section>
 {% endblock %}

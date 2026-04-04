@@ -110,16 +110,17 @@
         font-weight: 700;
     }
 
-    .action-cell .btn {
-        width: 100%;
-        min-height: 40px;
-        padding: 10px 12px;
-    }
-
     .action-stack {
         display: grid;
         gap: 8px;
         margin-top: 10px;
+    }
+
+    .action-stack .btn,
+    .action-stack button {
+        width: 100%;
+        min-height: 40px;
+        padding: 10px 12px;
     }
 
     @media (max-width: 900px) {
@@ -139,7 +140,8 @@
             font-size: 0.7rem;
         }
 
-        .action-cell .btn {
+        .action-stack .btn,
+        .action-stack button {
             font-size: 0.72rem;
             padding: 8px 6px;
         }
@@ -216,19 +218,12 @@
                                 <span class="money{% if fila.pico < 0 %} negative{% endif %}">{{ fila.pico|cop }}</span>
                             </td>
                             {% if forloop.first %}
-                                <td rowspan="{{ bloque.filas|length }}" class="action-cell" data-label="Cierre">
+                                <td rowspan="{{ bloque.filas|length }}" data-label="Cierre">
                                     <div class="day-summary">
                                         <span class="mini">Descuadre</span>
                                         <span class="money{% if bloque.descuadre > 0 %} negative{% endif %}">{{ bloque.descuadre|cop }}</span>
                                         <span class="mini">Adelanto</span>
                                         <span class="money">{{ bloque.adelanto|cop }}</span>
-                                        <div class="action-stack">
-                                            <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Editar</a>
-                                            <form method="post" action="{% url 'informe_eliminar' bloque.control.id %}">
-                                                {% csrf_token %}
-                                                <button class="btn btn-danger" type="submit" onclick="return confirm('¿Eliminar este informe?');">Eliminar</button>
-                                            </form>
-                                        </div>
                                     </div>
                                 </td>
                             {% endif %}
@@ -256,6 +251,13 @@
                             <div class="day-summary">
                                 <span class="mini">Descuadre {{ bloque.descuadre|cop }}</span>
                                 <span class="mini">Adelanto {{ bloque.adelanto|cop }}</span>
+                                <div class="action-stack">
+                                    <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Editar</a>
+                                    <form method="post" action="{% url 'informe_eliminar' bloque.control.id %}">
+                                        {% csrf_token %}
+                                        <button class="btn btn-danger" type="submit" onclick="return confirm('¿Eliminar este informe?');">Eliminar</button>
+                                    </form>
+                                </div>
                             </div>
                         </td>
                     </tr>

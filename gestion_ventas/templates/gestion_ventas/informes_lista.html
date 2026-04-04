@@ -42,6 +42,10 @@
         background: rgba(255, 255, 255, 0.5);
     }
 
+    .compact-report tbody tr.group-row {
+        background: rgba(255, 252, 245, 0.9);
+    }
+
     .compact-report td {
         padding: 12px 10px;
         vertical-align: top;
@@ -97,6 +101,22 @@
         font-size: 0.78rem;
         font-weight: 800;
         margin-bottom: 6px;
+    }
+
+    .product-stack {
+        display: grid;
+        gap: 10px;
+    }
+
+    .product-entry {
+        border: 1px solid rgba(201, 177, 141, 0.18);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 10px;
+    }
+
+    .product-entry + .product-entry {
+        margin-top: 0;
     }
 
     .negative {
@@ -160,7 +180,7 @@
 
 <section class="card">
     <h3>Trazabilidad por producto</h3>
-    {% if filas_informe %}
+    {% if bloques_informe %}
         <table class="compact-report">
             <colgroup>
                 <col style="width: 18%;">
@@ -181,41 +201,60 @@
                 </tr>
             </thead>
             <tbody>
-                {% for fila in filas_informe %}
-                    <tr>
+                {% for bloque in bloques_informe %}
+                    <tr class="group-row">
                         <td>
-                            <span class="cell-title">{{ fila.fecha|date:"d/m/Y" }}</span>
-                            <span class="cell-sub">{{ fila.vendedor }}</span>
-                            <span class="cell-sub">{{ fila.zona }}</span>
+                            <span class="cell-title">{{ bloque.fecha|date:"d/m/Y" }}</span>
+                            <span class="cell-sub">{{ bloque.vendedor }}</span>
+                            <span class="cell-sub">{{ bloque.zona }}</span>
                         </td>
                         <td>
-                            <span class="cell-title">{{ fila.producto.nombre }}</span>
-                            <span class="pill">{{ fila.comision_porcentaje }}% comision</span>
+                            <div class="product-stack">
+                                {% for fila in bloque.filas %}
+                                    <div class="product-entry">
+                                        <span class="cell-title">{{ fila.producto.nombre }}</span>
+                                        <span class="pill">{{ fila.comision_porcentaje }}% comision</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
                         </td>
                         <td>
-                            <div class="cell-grid">
-                                <div class="mini-line"><span>Salida</span><strong>{{ fila.salida|cop }}</strong></div>
-                                <div class="mini-line"><span>Enviada</span><strong>{{ fila.enviada|cop }}</strong></div>
-                                <div class="mini-line"><span>Recibida</span><strong>{{ fila.recibida|cop }}</strong></div>
-                                <div class="mini-line"><span>Llegada</span><strong>{{ fila.llegada|cop }}</strong></div>
+                            <div class="product-stack">
+                                {% for fila in bloque.filas %}
+                                    <div class="product-entry">
+                                        <div class="cell-grid">
+                                            <div class="mini-line"><span>Salida</span><strong>{{ fila.salida|cop }}</strong></div>
+                                            <div class="mini-line"><span>Enviada</span><strong>{{ fila.enviada|cop }}</strong></div>
+                                            <div class="mini-line"><span>Recibida</span><strong>{{ fila.recibida|cop }}</strong></div>
+                                            <div class="mini-line"><span>Llegada</span><strong>{{ fila.llegada|cop }}</strong></div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="product-stack">
+                                {% for fila in bloque.filas %}
+                                    <div class="product-entry">
+                                        <div class="cell-grid">
+                                            <div class="mini-line"><span>Venta esp.</span><strong>{{ fila.venta_esperada_producto|cop }}</strong></div>
+                                            <div class="mini-line"><span>Sueldo</span><strong>{{ fila.sueldo|cop }}</strong></div>
+                                            <div class="mini-line"><span>Producido</span><strong class="{% if fila.producido < 0 %}negative{% endif %}">{{ fila.producido|cop }}</strong></div>
+                                            <div class="mini-line"><span>Pico</span><strong class="{% if fila.pico < 0 %}negative{% endif %}">{{ fila.pico|cop }}</strong></div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
                             </div>
                         </td>
                         <td>
                             <div class="cell-grid">
-                                <div class="mini-line"><span>Venta esp.</span><strong>{{ fila.venta_esperada_producto|cop }}</strong></div>
-                                <div class="mini-line"><span>Sueldo</span><strong>{{ fila.sueldo|cop }}</strong></div>
-                                <div class="mini-line"><span>Producido</span><strong class="{% if fila.producido < 0 %}negative{% endif %}">{{ fila.producido|cop }}</strong></div>
-                                <div class="mini-line"><span>Pico</span><strong class="{% if fila.pico < 0 %}negative{% endif %}">{{ fila.pico|cop }}</strong></div>
+                                <div class="mini-line"><span>Descuadre</span><strong class="{% if bloque.descuadre > 0 %}negative{% endif %}">{{ bloque.descuadre|cop }}</strong></div>
+                                <div class="mini-line"><span>Adelanto</span><strong>{{ bloque.adelanto|cop }}</strong></div>
+                                <div class="mini-line"><span>Venta real</span><strong>{{ bloque.control.venta_real|cop }}</strong></div>
                             </div>
                         </td>
                         <td>
-                            <div class="cell-grid">
-                                <div class="mini-line"><span>Descuadre</span><strong class="{% if fila.descuadre > 0 %}negative{% endif %}">{{ fila.descuadre|cop }}</strong></div>
-                                <div class="mini-line"><span>Adelanto</span><strong>{{ fila.adelanto|cop }}</strong></div>
-                            </div>
-                        </td>
-                        <td>
-                            <a class="btn btn-secondary" href="{% url 'informe_editar' fila.control.id %}">Modificar</a>
+                            <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Modificar</a>
                         </td>
                     </tr>
                 {% endfor %}

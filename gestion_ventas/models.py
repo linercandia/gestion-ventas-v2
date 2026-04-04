@@ -102,6 +102,29 @@ class Zona(models.Model):
     def __str__(self):
         return f"{self.nombre} ({self.porcentaje_comision}%)"
 
+    def get_porcentaje_comision_producto(self, producto):
+        relacion = self.comisiones_producto.filter(producto=producto).first()
+        if relacion:
+            return relacion.porcentaje_comision
+        return 0
+
+
+class ZonaProductoComision(models.Model):
+    zona = models.ForeignKey(Zona, on_delete=models.CASCADE, related_name="comisiones_producto")
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name="comisiones_zona")
+    porcentaje_comision = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = "Comision por producto en zona"
+        verbose_name_plural = "Comisiones por producto en zona"
+        constraints = [
+            models.UniqueConstraint(fields=["zona", "producto"], name="unique_comision_producto_por_zona")
+        ]
+        ordering = ["producto__nombre"]
+
+    def __str__(self):
+        return f"{self.zona.nombre} - {self.producto.nombre} ({self.porcentaje_comision}%)"
+
 
 class Vendedor(TimeStampedModel):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="vendedores")
@@ -150,6 +173,10 @@ class Jornada(models.Model):
     @property
     def portal_path(self):
         return reverse("portal_vendedor_token", args=[self.access_token])
+
+    @property
+    def portal_url(self):
+        return f"{settings.APP_BASE_URL}{self.portal_path}"
 
     def __str__(self):
         nombre = f" - {self.nombre}" if self.nombre else ""
@@ -223,7 +250,12 @@ class ControlZonaJornada(models.Model):
 
     @property
     def comision_valor(self):
-        return (self.total_venta_esperada * self.comision_porcentaje) / 100
+        total = 0
+        for detalle in self.detalles.select_related("producto").all():
+            venta_producto = self.unidades_vendidas_producto(detalle) * detalle.producto.precio_venta
+            porcentaje = self.zona.get_porcentaje_comision_producto(detalle.producto)
+            total += (venta_producto * porcentaje) / 100
+        return total
 
     @property
     def total_adelantos(self):

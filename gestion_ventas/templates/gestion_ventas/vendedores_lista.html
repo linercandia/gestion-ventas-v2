@@ -10,11 +10,16 @@
 
 <section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
     <article class="card">
-        <h3>Nuevo vendedor</h3>
+        <h3>{% if modo == "editar" %}Editar vendedor{% else %}Nuevo vendedor{% endif %}</h3>
         <form method="post" class="form-grid">
             {% csrf_token %}
             {{ form.as_p }}
-            <button class="btn btn-primary" type="submit">Guardar vendedor</button>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">{% if modo == "editar" %}Actualizar vendedor{% else %}Guardar vendedor{% endif %}</button>
+                {% if modo == "editar" %}
+                    <a class="btn btn-secondary" href="{% url 'vendedores_cliente' %}">Cancelar</a>
+                {% endif %}
+            </div>
         </form>
     </article>
     <article class="card">
@@ -27,6 +32,7 @@
                         <th>Telefono</th>
                         <th>Zona preferida</th>
                         <th>Estado</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,6 +42,15 @@
                             <td>{{ vendedor.telefono }}</td>
                             <td>{{ vendedor.zona_preferida|default:"-" }}</td>
                             <td>{% if vendedor.activo %}Activo{% else %}Inactivo{% endif %}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="btn btn-secondary" href="{% url 'vendedor_editar' vendedor.id %}">Editar</a>
+                                    <form method="post" action="{% url 'vendedor_eliminar' vendedor.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button class="btn btn-secondary" type="submit" onclick="return confirm('¿Eliminar vendedor?');">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

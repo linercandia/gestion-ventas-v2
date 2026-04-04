@@ -10,11 +10,16 @@
 
 <section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
     <article class="card">
-        <h3>Nuevo producto</h3>
+        <h3>{% if modo == "editar" %}Editar producto{% else %}Nuevo producto{% endif %}</h3>
         <form method="post" class="form-grid">
             {% csrf_token %}
             {{ form.as_p }}
-            <button class="btn btn-primary" type="submit">Guardar producto</button>
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">{% if modo == "editar" %}Actualizar producto{% else %}Guardar producto{% endif %}</button>
+                {% if modo == "editar" %}
+                    <a class="btn btn-secondary" href="{% url 'productos_cliente' %}">Cancelar</a>
+                {% endif %}
+            </div>
         </form>
     </article>
     <article class="card">
@@ -28,6 +33,7 @@
                         <th>Unidad</th>
                         <th>Registro</th>
                         <th>Precio venta</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -38,6 +44,15 @@
                             <td>{{ producto.get_unidad_medida_display }}</td>
                             <td>{% if producto.formato_visual == "moneda" %}Pesos{% else %}Unidades{% endif %}</td>
                             <td>{{ producto.precio_venta }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="btn btn-secondary" href="{% url 'producto_editar' producto.id %}">Editar</a>
+                                    <form method="post" action="{% url 'producto_eliminar' producto.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button class="btn btn-secondary" type="submit" onclick="return confirm('¿Eliminar producto?');">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

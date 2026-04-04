@@ -81,7 +81,7 @@ class JornadaAdmin(admin.ModelAdmin):
     def link_del_portal(self, obj):
         return format_html(
             '<a href="{}" target="_blank" style="font-weight: 600;">Abrir portal</a>',
-            obj.portal_path,
+            obj.portal_url,
         )
 
     link_del_portal.short_description = "Portal de ventas"
@@ -99,8 +99,8 @@ class JornadaAdmin(admin.ModelAdmin):
             "Copiar</button>"
             '<p style="margin: 10px 0 0; color: #666;">Comparte este enlace con los vendedores para registrar la jornada en tiempo real.</p>'
             "</div>",
-            obj.portal_path,
-            obj.portal_path,
+            obj.portal_url,
+            obj.portal_url,
         )
 
     ver_link_formulario.short_description = "Acceso del portal"

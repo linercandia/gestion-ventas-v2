@@ -34,7 +34,7 @@
                                 {% if jornada.activa %}Activa{% else %}Inactiva{% endif %}
                             </span>
                         </td>
-                        <td><input value="{{ jornada.portal_path }}" readonly></td>
+                        <td><input value="{{ jornada.portal_url }}" readonly></td>
                         <td><a class="btn btn-secondary" href="{% url 'jornada_editar' jornada.id %}">Editar</a></td>
                     </tr>
                 {% endfor %}

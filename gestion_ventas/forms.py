@@ -1,4 +1,5 @@
 from django import forms
+from django.forms import formset_factory
 
 from .models import Adelanto, ControlZonaJornada, Jornada, Producto, Vendedor, Zona
 
@@ -17,17 +18,14 @@ class InformeForm(forms.ModelForm):
         model = ControlZonaJornada
         fields = ["nombre_vendedor", "dinero_entregado", "cerrada"]
         widgets = {
-            "dinero_entregado": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "dinero_entregado": forms.TextInput(attrs={"class": "js-money", "inputmode": "numeric"}),
         }
 
 
 class ZonaForm(forms.ModelForm):
     class Meta:
         model = Zona
-        fields = ["nombre", "codigo", "descripcion", "porcentaje_comision", "activa"]
-        widgets = {
-            "porcentaje_comision": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
-        }
+        fields = ["nombre", "codigo", "descripcion", "activa"]
 
 
 class ProductoForm(forms.ModelForm):
@@ -35,7 +33,7 @@ class ProductoForm(forms.ModelForm):
         model = Producto
         fields = ["nombre", "codigo", "unidad_medida", "precio_venta", "activo"]
         widgets = {
-            "precio_venta": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "precio_venta": forms.TextInput(attrs={"class": "js-money", "inputmode": "numeric"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -61,7 +59,7 @@ class AdelantoForm(forms.ModelForm):
         fields = ["vendedor", "control", "fecha", "monto", "motivo"]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}),
-            "monto": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "monto": forms.TextInput(attrs={"class": "js-money", "inputmode": "numeric"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -85,3 +83,18 @@ class DesprendiblePagoForm(forms.Form):
         super().__init__(*args, **kwargs)
         if vendedores is not None:
             self.fields["vendedor"].queryset = vendedores
+
+
+class ZonaProductoComisionForm(forms.Form):
+    producto_id = forms.IntegerField(widget=forms.HiddenInput)
+    producto_nombre = forms.CharField(disabled=True, required=False)
+    porcentaje_comision = forms.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        widget=forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+    )
+
+
+ZonaProductoComisionFormSet = formset_factory(ZonaProductoComisionForm, extra=0)

@@ -41,9 +41,9 @@
         {% if jornada_activa %}
             <p><strong>{{ jornada_activa.fecha }}</strong>{% if jornada_activa.nombre %} · {{ jornada_activa.nombre }}{% endif %}</p>
             <p class="muted">Comparte este enlace con los vendedores para el registro operativo.</p>
-            <input value="{{ jornada_activa.portal_path }}" readonly>
+            <input value="{{ jornada_activa.portal_url }}" readonly>
             <div class="actions">
-                <a class="btn btn-primary" href="{{ jornada_activa.portal_path }}">Abrir portal</a>
+                <a class="btn btn-primary" href="{{ jornada_activa.portal_url }}">Abrir portal</a>
                 <a class="btn btn-secondary" href="{% url 'jornada_editar' jornada_activa.id %}">Editar jornada</a>
             </div>
         {% else %}

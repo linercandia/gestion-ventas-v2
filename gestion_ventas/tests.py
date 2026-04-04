@@ -6,7 +6,7 @@ from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
 
-from .models import Adelanto, Cliente, ControlZonaJornada, EnvioInterzona, InventarioControl, Jornada, Producto, Vendedor, Zona
+from .models import Adelanto, Cliente, ControlZonaJornada, EnvioInterzona, InventarioControl, Jornada, Producto, Vendedor, Zona, ZonaProductoComision
 
 
 User = get_user_model()
@@ -29,6 +29,13 @@ class PortalJornadaTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["jornada"], jornada)
+
+    def test_jornada_expone_url_absoluta_lista_para_compartir(self):
+        user = User.objects.create_user(username="cliente_url", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+
+        self.assertTrue(jornada.portal_url.startswith("http://127.0.0.1:8000/portal/"))
 
     def test_portal_publico_muestra_vendedores_del_negocio(self):
         user = User.objects.create_user(username="cliente_vendedores", password="secret123")
@@ -203,6 +210,8 @@ class PanelClienteTests(TestCase):
 
     def test_usuario_cliente_puede_registrar_zona_y_producto(self):
         user = User.objects.create_user(username="cliente_catalogo", password="secret123")
+        cliente = user.cliente_profile
+        Producto.objects.create(cliente=cliente, nombre="Base", unidad_medida="Und", precio_venta=1000)
         self.client.login(username="cliente_catalogo", password="secret123")
 
         zona_response = self.client.post(
@@ -213,6 +222,13 @@ class PanelClienteTests(TestCase):
                 "descripcion": "Zona norte",
                 "porcentaje_comision": "12.5",
                 "activa": "on",
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-producto_id": str(Producto.objects.get(nombre="Base").id),
+                "form-0-producto_nombre": "Base",
+                "form-0-porcentaje_comision": "15",
             },
         )
         producto_response = self.client.post(
@@ -230,6 +246,101 @@ class PanelClienteTests(TestCase):
         self.assertEqual(producto_response.status_code, 302)
         self.assertTrue(Zona.objects.filter(nombre="Norte").exists())
         self.assertTrue(Producto.objects.filter(nombre="Producto A", precio_venta=3000).exists())
+
+    def test_zona_guarda_comision_distinta_por_producto(self):
+        user = User.objects.create_user(username="cliente_comision_zona", password="secret123")
+        cliente = user.cliente_profile
+        producto = Producto.objects.create(cliente=cliente, nombre="Producto A", unidad_medida="Und", precio_venta=1000)
+        self.client.login(username="cliente_comision_zona", password="secret123")
+
+        response = self.client.post(
+            reverse("zonas_cliente"),
+            {
+                "nombre": "Norte",
+                "codigo": "N1",
+                "descripcion": "Zona norte",
+                "porcentaje_comision": "10",
+                "activa": "on",
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-producto_id": str(producto.id),
+                "form-0-producto_nombre": "Producto A",
+                "form-0-porcentaje_comision": "18",
+            },
+        )
+
+        zona = Zona.objects.get(nombre="Norte")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(zona.get_porcentaje_comision_producto(producto), Decimal("18"))
+        self.assertTrue(ZonaProductoComision.objects.filter(zona=zona, producto=producto, porcentaje_comision=18).exists())
+
+    def test_resumen_zonas_muestra_producto_y_porcentaje(self):
+        user = User.objects.create_user(username="cliente_resumen_zona", password="secret123")
+        cliente = user.cliente_profile
+        producto = Producto.objects.create(cliente=cliente, nombre="Producto A", unidad_medida="Und", precio_venta=1000)
+        zona = Zona.objects.create(cliente=cliente, nombre="Norte")
+        ZonaProductoComision.objects.create(zona=zona, producto=producto, porcentaje_comision=22)
+        self.client.login(username="cliente_resumen_zona", password="secret123")
+
+        response = self.client.get(reverse("zonas_cliente"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Producto A: 22")
+
+    def test_producto_vendedor_y_zona_se_pueden_editar_y_eliminar(self):
+        user = User.objects.create_user(username="cliente_crud", password="secret123")
+        cliente = user.cliente_profile
+        producto = Producto.objects.create(cliente=cliente, nombre="Producto A", unidad_medida="Und", precio_venta=1000)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", porcentaje_comision=10)
+        vendedor = Vendedor.objects.create(cliente=cliente, nombre="Pedro", zona_preferida=zona)
+        self.client.login(username="cliente_crud", password="secret123")
+
+        response_producto = self.client.post(
+            reverse("producto_editar", args=[producto.id]),
+            {"nombre": "Producto B", "codigo": "", "unidad_medida": "Lb", "precio_venta": "2000", "activo": "on"},
+        )
+        response_vendedor = self.client.post(
+            reverse("vendedor_editar", args=[vendedor.id]),
+            {"nombre": "Pedro Diaz", "telefono": "", "identificacion": "", "zona_preferida": str(zona.id), "activo": "on"},
+        )
+        response_zona = self.client.post(
+            reverse("zona_editar", args=[zona.id]),
+            {
+                "nombre": "Centro Plus",
+                "codigo": "",
+                "descripcion": "",
+                "porcentaje_comision": "12",
+                "activa": "on",
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-MIN_NUM_FORMS": "0",
+                "form-MAX_NUM_FORMS": "1000",
+                "form-0-producto_id": str(producto.id),
+                "form-0-producto_nombre": producto.nombre,
+                "form-0-porcentaje_comision": "16",
+            },
+        )
+
+        producto.refresh_from_db()
+        vendedor.refresh_from_db()
+        zona.refresh_from_db()
+        self.assertEqual(response_producto.status_code, 302)
+        self.assertEqual(response_vendedor.status_code, 302)
+        self.assertEqual(response_zona.status_code, 302)
+        self.assertEqual(producto.nombre, "Producto B")
+        self.assertEqual(producto.formato_visual, "moneda")
+        self.assertEqual(vendedor.nombre, "Pedro Diaz")
+        self.assertEqual(zona.nombre, "Centro Plus")
+        self.assertEqual(zona.get_porcentaje_comision_producto(producto), Decimal("16"))
+
+        self.client.post(reverse("producto_eliminar", args=[producto.id]))
+        self.client.post(reverse("vendedor_eliminar", args=[vendedor.id]))
+        self.client.post(reverse("zona_eliminar", args=[zona.id]))
+        self.assertFalse(Producto.objects.filter(id=producto.id).exists())
+        self.assertFalse(Vendedor.objects.filter(id=vendedor.id).exists())
+        self.assertFalse(Zona.objects.filter(id=zona.id).exists())
 
     def test_producto_define_formato_segun_unidad(self):
         user = User.objects.create_user(username="cliente_formatos", password="secret123")
@@ -274,6 +385,7 @@ class PanelClienteTests(TestCase):
         otra_vendedora = Vendedor.objects.create(cliente=cliente, nombre="Ana")
         zona = Zona.objects.create(cliente=cliente, nombre="Centro", porcentaje_comision=10)
         producto = Producto.objects.create(cliente=cliente, nombre="Producto A", unidad_medida="Und", precio_venta=Decimal("10000"))
+        ZonaProductoComision.objects.create(zona=zona, producto=producto, porcentaje_comision=10)
         fecha_fin = timezone.localdate()
         fecha_inicio = fecha_fin - timedelta(days=2)
         jornada = Jornada.objects.create(cliente=cliente, fecha=fecha_fin, activa=True)
@@ -330,6 +442,7 @@ class PanelClienteTests(TestCase):
         jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
         zona = Zona.objects.create(cliente=cliente, nombre="Centro", porcentaje_comision=10)
         producto = Producto.objects.create(cliente=cliente, nombre="Producto A", precio_venta=Decimal("10000"))
+        ZonaProductoComision.objects.create(zona=zona, producto=producto, porcentaje_comision=10)
         control = ControlZonaJornada.objects.create(
             jornada=jornada,
             zona=zona,
@@ -346,3 +459,22 @@ class PanelClienteTests(TestCase):
         self.assertEqual(control.total_adelantos, Decimal("2000"))
         self.assertEqual(control.rentabilidad, Decimal("31000"))
         self.assertEqual(control.pago_neto, 0)
+
+    def test_comision_valor_usa_porcentaje_por_producto_en_zona(self):
+        user = User.objects.create_user(username="cliente_pago_producto", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", porcentaje_comision=10)
+        producto = Producto.objects.create(cliente=cliente, nombre="Producto A", unidad_medida="Und", precio_venta=Decimal("10000"))
+        ZonaProductoComision.objects.create(zona=zona, producto=producto, porcentaje_comision=20)
+        control = ControlZonaJornada.objects.create(
+            jornada=jornada,
+            zona=zona,
+            nombre_vendedor="Ana",
+            dinero_entregado=Decimal("40000"),
+            cerrada=True,
+        )
+        InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
+
+        self.assertEqual(control.total_venta_esperada, Decimal("40000"))
+        self.assertEqual(control.comision_valor, Decimal("8000"))

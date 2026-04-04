@@ -5,16 +5,41 @@
 {% block content %}
 <section class="hero">
     <h2>Zonas y comisiones</h2>
-    <p>Define las zonas de venta y el porcentaje de comision que se usara para calcular el pago del vendedor.</p>
+    <p>Define las zonas de venta. Cada producto debe tener su propio porcentaje de comision dentro de la zona.</p>
 </section>
 
 <section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
     <article class="card">
-        <h3>Nueva zona</h3>
+        <h3>{% if modo == "editar" %}Editar zona{% else %}Nueva zona{% endif %}</h3>
         <form method="post" class="form-grid">
             {% csrf_token %}
             {{ form.as_p }}
-            <button class="btn btn-primary" type="submit">Guardar zona</button>
+
+            <h3 style="margin-top:8px;">Comision por producto</h3>
+            {{ formset.management_form }}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>% comision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in formset %}
+                        <tr>
+                            <td>{{ item.producto_nombre.value }}{{ item.producto_id }}</td>
+                            <td>{{ item.porcentaje_comision }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="actions">
+                <button class="btn btn-primary" type="submit">{% if modo == "editar" %}Actualizar zona{% else %}Guardar zona{% endif %}</button>
+                {% if modo == "editar" %}
+                    <a class="btn btn-secondary" href="{% url 'zonas_cliente' %}">Cancelar</a>
+                {% endif %}
+            </div>
         </form>
     </article>
     <article class="card">
@@ -25,8 +50,9 @@
                     <tr>
                         <th>Zona</th>
                         <th>Codigo</th>
-                        <th>Comision</th>
+                        <th>Comisiones por producto</th>
                         <th>Estado</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -34,8 +60,23 @@
                         <tr>
                             <td>{{ zona.nombre }}</td>
                             <td>{{ zona.codigo }}</td>
-                            <td>{{ zona.porcentaje_comision }}%</td>
+                            <td>
+                                {% for comision in zona.comisiones_producto.all %}
+                                    <div>{{ comision.producto.nombre }}: {{ comision.porcentaje_comision }}%</div>
+                                {% empty %}
+                                    <span class="muted">Sin productos configurados</span>
+                                {% endfor %}
+                            </td>
                             <td>{% if zona.activa %}Activa{% else %}Inactiva{% endif %}</td>
+                            <td>
+                                <div class="actions">
+                                    <a class="btn btn-secondary" href="{% url 'zona_editar' zona.id %}">Editar</a>
+                                    <form method="post" action="{% url 'zona_eliminar' zona.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button class="btn btn-secondary" type="submit" onclick="return confirm('¿Eliminar zona?');">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

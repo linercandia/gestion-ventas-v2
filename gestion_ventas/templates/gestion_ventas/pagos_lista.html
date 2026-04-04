@@ -24,7 +24,7 @@
                     <th>Vendedor</th>
                     <th>Zona</th>
                     <th>Venta esperada</th>
-                    <th>Comision</th>
+                    <th>Comision calculada</th>
                     <th>Adelantos</th>
                     <th>Descuadre</th>
                     <th>Pago neto</th>
@@ -37,7 +37,7 @@
                         <td>{{ control.vendedor_nombre }}</td>
                         <td>{{ control.zona.nombre }}</td>
                         <td>{{ control.total_venta_esperada }}</td>
-                        <td>{{ control.comision_valor }} ({{ control.comision_porcentaje }}%)</td>
+                        <td>{{ control.comision_valor }} (segun % por producto)</td>
                         <td>{{ control.total_adelantos }}</td>
                         <td>{{ control.descuadre_dinero }}</td>
                         <td><strong>{{ control.pago_neto }}</strong></td>

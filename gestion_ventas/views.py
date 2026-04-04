@@ -10,8 +10,17 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import AdelantoForm, DesprendiblePagoForm, InformeForm, JornadaForm, ProductoForm, VendedorForm, ZonaForm
-from .models import Adelanto, ControlZonaJornada, EnvioInterzona, InventarioControl, Producto, Vendedor, Zona
+from .forms import (
+    AdelantoForm,
+    DesprendiblePagoForm,
+    InformeForm,
+    JornadaForm,
+    ProductoForm,
+    VendedorForm,
+    ZonaForm,
+    ZonaProductoComisionFormSet,
+)
+from .models import Adelanto, ControlZonaJornada, EnvioInterzona, InventarioControl, Producto, Vendedor, Zona, ZonaProductoComision
 from .services import (
     obtener_jornada_portal,
     productos_disponibles_para_jornada,
@@ -61,6 +70,38 @@ def obtener_contexto_negocio(cliente):
         "productos_qs": cliente.productos.order_by("nombre"),
         "vendedores_qs": cliente.vendedores.order_by("nombre"),
     }
+
+
+def construir_formset_comisiones(productos, data=None, zona=None):
+    initial = []
+    comisiones_existentes = {}
+    if zona is not None:
+        comisiones_existentes = {
+            comision.producto_id: comision.porcentaje_comision
+            for comision in zona.comisiones_producto.select_related("producto").all()
+        }
+    for producto in productos:
+        initial.append(
+            {
+                "producto_id": producto.id,
+                "producto_nombre": producto.nombre,
+                "porcentaje_comision": comisiones_existentes.get(producto.id, 0),
+            }
+        )
+    return ZonaProductoComisionFormSet(data=data, initial=initial)
+
+
+def guardar_comisiones_zona(zona, formset):
+    for form in formset:
+        producto_id = form.cleaned_data.get("producto_id")
+        porcentaje = form.cleaned_data.get("porcentaje_comision")
+        if not producto_id or porcentaje is None:
+            continue
+        ZonaProductoComision.objects.update_or_create(
+            zona=zona,
+            producto_id=producto_id,
+            defaults={"porcentaje_comision": porcentaje},
+        )
 
 
 def panel_cliente(request):
@@ -156,16 +197,23 @@ def zonas_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    zonas = cliente.zonas.order_by("nombre")
+    zonas = cliente.zonas.prefetch_related("comisiones_producto__producto").order_by("nombre")
+    productos = cliente.productos.order_by("nombre")
     form = ZonaForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    formset = construir_formset_comisiones(productos, request.POST or None)
+    if request.method == "POST" and form.is_valid() and formset.is_valid():
         zona = form.save(commit=False)
         zona.cliente = cliente
         zona.save()
+        guardar_comisiones_zona(zona, formset)
         messages.success(request, "La zona fue registrada.")
         return redirect("zonas_cliente")
 
-    return render(request, "gestion_ventas/zonas_lista.html", {"cliente": cliente, "zonas": zonas, "form": form})
+    return render(
+        request,
+        "gestion_ventas/zonas_lista.html",
+        {"cliente": cliente, "zonas": zonas, "form": form, "formset": formset, "modo": "crear"},
+    )
 
 
 def productos_cliente(request):
@@ -185,7 +233,7 @@ def productos_cliente(request):
     return render(
         request,
         "gestion_ventas/productos_lista.html",
-        {"cliente": cliente, "productos": productos, "form": form},
+        {"cliente": cliente, "productos": productos, "form": form, "modo": "crear"},
     )
 
 
@@ -207,8 +255,124 @@ def vendedores_cliente(request):
     return render(
         request,
         "gestion_ventas/vendedores_lista.html",
-        {"cliente": cliente, "vendedores": vendedores, "form": form},
+        {"cliente": cliente, "vendedores": vendedores, "form": form, "modo": "crear"},
     )
+
+
+def producto_editar(request, producto_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    producto = get_object_or_404(cliente.productos, id=producto_id)
+    form = ProductoForm(request.POST or None, instance=producto)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "El producto fue actualizado.")
+        return redirect("productos_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/productos_lista.html",
+        {
+            "cliente": cliente,
+            "productos": cliente.productos.order_by("nombre"),
+            "form": form,
+            "modo": "editar",
+            "objeto_edicion": producto,
+        },
+    )
+
+
+def producto_eliminar(request, producto_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    producto = get_object_or_404(cliente.productos, id=producto_id)
+    if request.method == "POST":
+        producto.delete()
+        messages.success(request, "El producto fue eliminado.")
+    return redirect("productos_cliente")
+
+
+def vendedor_editar(request, vendedor_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    vendedor = get_object_or_404(cliente.vendedores, id=vendedor_id)
+    zonas = cliente.zonas.order_by("nombre")
+    form = VendedorForm(request.POST or None, instance=vendedor, zonas=zonas)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "El vendedor fue actualizado.")
+        return redirect("vendedores_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/vendedores_lista.html",
+        {
+            "cliente": cliente,
+            "vendedores": cliente.vendedores.select_related("zona_preferida").order_by("nombre"),
+            "form": form,
+            "modo": "editar",
+            "objeto_edicion": vendedor,
+        },
+    )
+
+
+def vendedor_eliminar(request, vendedor_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    vendedor = get_object_or_404(cliente.vendedores, id=vendedor_id)
+    if request.method == "POST":
+        vendedor.delete()
+        messages.success(request, "El vendedor fue eliminado.")
+    return redirect("vendedores_cliente")
+
+
+def zona_editar(request, zona_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    zona = get_object_or_404(cliente.zonas, id=zona_id)
+    productos = cliente.productos.order_by("nombre")
+    form = ZonaForm(request.POST or None, instance=zona)
+    formset = construir_formset_comisiones(productos, request.POST or None, zona=zona)
+    if request.method == "POST" and form.is_valid() and formset.is_valid():
+        form.save()
+        guardar_comisiones_zona(zona, formset)
+        messages.success(request, "La zona fue actualizada.")
+        return redirect("zonas_cliente")
+
+    return render(
+        request,
+        "gestion_ventas/zonas_lista.html",
+        {
+            "cliente": cliente,
+            "zonas": cliente.zonas.prefetch_related("comisiones_producto__producto").order_by("nombre"),
+            "form": form,
+            "formset": formset,
+            "modo": "editar",
+            "objeto_edicion": zona,
+        },
+    )
+
+
+def zona_eliminar(request, zona_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    zona = get_object_or_404(cliente.zonas, id=zona_id)
+    if request.method == "POST":
+        zona.delete()
+        messages.success(request, "La zona fue eliminada.")
+    return redirect("zonas_cliente")
 
 
 def adelantos_cliente(request):
@@ -635,7 +799,7 @@ def exportar_excel_jornadas(request):
                     vendido,
                     detalle.producto.precio_venta,
                     vendido * detalle.producto.precio_venta,
-                    control.zona.porcentaje_comision,
+                    control.zona.get_porcentaje_comision_producto(detalle.producto),
                     control.dinero_entregado,
                     control.total_adelantos,
                     control.descuadre_dinero,

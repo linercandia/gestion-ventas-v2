@@ -88,7 +88,41 @@
         background: linear-gradient(180deg, rgba(15, 118, 110, 0.08), rgba(217, 119, 6, 0.06));
         border-bottom: 1px solid rgba(201, 177, 141, 0.16);
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+    }
+
+    .receipt-trace {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .receipt-trace-title {
+        color: var(--brand-dark);
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .receipt-trace-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .receipt-trace-item {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(201, 177, 141, 0.22);
+        color: var(--ink);
+        font-size: 0.82rem;
+        font-weight: 700;
     }
 
     .receipt-totals-inner {
@@ -172,6 +206,7 @@
 
         .receipt-totals {
             justify-content: stretch;
+            flex-direction: column;
         }
 
         .receipt-totals-inner {
@@ -221,6 +256,20 @@
             </div>
 
             <div class="receipt-totals">
+                <div class="receipt-trace">
+                    <div class="receipt-trace-title">Trazabilidad de fechas</div>
+                    <div class="receipt-trace-list">
+                        {% for fila in filas_diarias %}
+                            {% if fila.trabajo %}
+                                <span class="receipt-trace-item">
+                                    {{ fila.fecha|date:"d/m/Y" }}{% if fila.zonas %} | {{ fila.zonas }}{% endif %}
+                                </span>
+                            {% endif %}
+                        {% empty %}
+                            <span class="muted-mini">No hay fechas registradas en este periodo.</span>
+                        {% endfor %}
+                    </div>
+                </div>
                 <div class="receipt-totals-inner">
                     <div class="receipt-total-line">
                         <span>Sub total sueldos</span>

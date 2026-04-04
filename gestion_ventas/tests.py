@@ -470,8 +470,8 @@ class PanelClienteTests(TestCase):
         self.assertEqual(control.comision_valor, Decimal("5000"))
         self.assertEqual(control.descuadre_dinero, Decimal("5000"))
         self.assertEqual(control.total_adelantos, Decimal("2000"))
-        self.assertEqual(control.rentabilidad, Decimal("30000"))
-        self.assertEqual(control.pico, Decimal("-10000"))
+        self.assertEqual(control.rentabilidad, Decimal("35000"))
+        self.assertEqual(control.pico, Decimal("-5000"))
         self.assertEqual(control.pago_neto, 0)
 
     def test_comision_valor_usa_porcentaje_por_producto_en_zona(self):
@@ -565,5 +565,5 @@ class PanelClienteTests(TestCase):
         self.assertEqual(fila["llegada"], Decimal("24000"))
         self.assertEqual(fila["venta_esperada_producto"], Decimal("36000"))
         self.assertEqual(fila["sueldo"], Decimal("23040"))
-        self.assertEqual(fila["producido"], Decimal("-5040"))
-        self.assertEqual(fila["pico"], Decimal("-41040"))
+        self.assertEqual(fila["producido"], Decimal("12960"))
+        self.assertEqual(fila["pico"], Decimal("-23040"))

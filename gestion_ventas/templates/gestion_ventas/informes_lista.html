@@ -19,7 +19,7 @@
 </section>
 
 <style>
-    .compact-report {
+    .report-matrix {
         width: 100%;
         table-layout: fixed;
         border-collapse: separate;
@@ -27,152 +27,109 @@
         border: 1px solid rgba(201, 177, 141, 0.24);
         border-radius: 18px;
         overflow: hidden;
+        background: rgba(255, 255, 255, 0.78);
     }
 
-    .compact-report thead th {
+    .report-matrix thead th {
         background: rgba(15, 118, 110, 0.08);
         color: var(--brand-dark);
-        font-size: 0.76rem;
+        font-size: 0.75rem;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        padding: 12px 10px;
+        padding: 10px 8px;
     }
 
-    .compact-report tbody tr:nth-child(even) {
-        background: rgba(255, 255, 255, 0.5);
+    .report-matrix tbody tr.group-start td {
+        border-top: 2px solid rgba(15, 118, 110, 0.14);
     }
 
-    .compact-report tbody tr.group-row {
-        background: rgba(255, 252, 245, 0.9);
+    .report-matrix tbody tr:first-child td {
+        border-top: none;
     }
 
-    .compact-report td {
-        padding: 12px 10px;
+    .report-matrix td {
+        padding: 10px 8px;
         vertical-align: top;
+        font-size: 0.9rem;
     }
 
-    .cell-title {
-        display: block;
+    .report-main {
         font-weight: 800;
         color: var(--ink);
-        margin-bottom: 4px;
-        line-height: 1.2;
+        line-height: 1.25;
     }
 
-    .cell-sub {
+    .report-sub {
         display: block;
+        margin-top: 4px;
         color: var(--muted);
-        font-size: 0.82rem;
-        line-height: 1.35;
+        font-size: 0.78rem;
+        line-height: 1.3;
     }
 
-    .cell-grid {
+    .money {
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .money.soft {
+        color: var(--muted);
+        font-weight: 600;
+    }
+
+    .money.negative {
+        color: var(--danger);
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 5px 8px;
+        background: var(--brand-soft);
+        color: var(--brand-dark);
+        font-size: 0.76rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .day-summary {
         display: grid;
         gap: 4px;
     }
 
-    .mini-line {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-        align-items: baseline;
-        line-height: 1.3;
-    }
-
-    .mini-line span:first-child {
+    .day-summary .mini {
         color: var(--muted);
-        font-size: 0.79rem;
+        font-size: 0.78rem;
         font-weight: 700;
     }
 
-    .mini-line strong {
-        font-size: 0.9rem;
-        text-align: right;
-    }
-
-    .pill {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 5px 9px;
-        border-radius: 999px;
-        background: var(--brand-soft);
-        color: var(--brand-dark);
-        font-size: 0.78rem;
-        font-weight: 800;
-        margin-bottom: 6px;
-    }
-
-    .product-stack {
-        display: grid;
-        gap: 10px;
-    }
-
-    .product-entry {
-        border: 1px solid rgba(201, 177, 141, 0.18);
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.72);
-        padding: 10px;
-    }
-
-    .product-entry + .product-entry {
-        margin-top: 0;
-    }
-
-    .negative {
-        color: var(--danger);
-    }
-
-    .compact-report .btn {
+    .action-cell .btn {
         width: 100%;
-        padding: 10px 12px;
         min-height: 40px;
+        padding: 10px 12px;
     }
 
     @media (max-width: 900px) {
-        .compact-report {
-            font-size: 0.92rem;
+        .report-matrix {
+            table-layout: auto;
         }
 
-        .compact-report th,
-        .compact-report td {
-            padding: 10px 8px;
+        .report-matrix th,
+        .report-matrix td {
+            padding: 8px 6px;
+            font-size: 0.8rem;
         }
 
-        .mini-line {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 2px;
+        .report-sub,
+        .day-summary .mini,
+        .tag {
+            font-size: 0.7rem;
         }
 
-        .mini-line strong {
-            text-align: left;
-        }
-    }
-
-    @media (max-width: 640px) {
-        .compact-report thead th {
-            font-size: 0.68rem;
-            padding: 9px 6px;
-        }
-
-        .compact-report td {
-            padding: 9px 6px;
-        }
-
-        .cell-title {
-            font-size: 0.84rem;
-        }
-
-        .cell-sub,
-        .mini-line span:first-child,
-        .mini-line strong,
-        .pill {
+        .action-cell .btn {
             font-size: 0.72rem;
-        }
-
-        .compact-report .btn {
-            font-size: 0.74rem;
             padding: 8px 6px;
         }
     }
@@ -181,82 +138,85 @@
 <section class="card">
     <h3>Trazabilidad por producto</h3>
     {% if bloques_informe %}
-        <table class="compact-report">
+        <table class="report-matrix">
             <colgroup>
-                <col style="width: 18%;">
-                <col style="width: 16%;">
-                <col style="width: 20%;">
-                <col style="width: 16%;">
-                <col style="width: 16%;">
-                <col style="width: 14%;">
+                <col style="width: 11%;">
+                <col style="width: 11%;">
+                <col style="width: 10%;">
+                <col style="width: 10%;">
+                <col style="width: 8%;">
+                <col style="width: 7%;">
+                <col style="width: 7%;">
+                <col style="width: 7%;">
+                <col style="width: 8%;">
+                <col style="width: 6%;">
+                <col style="width: 8%;">
+                <col style="width: 8%;">
+                <col style="width: 8%;">
+                <col style="width: 9%;">
             </colgroup>
             <thead>
                 <tr>
-                    <th>Jornada</th>
+                    <th>Fecha</th>
+                    <th>Vendedor</th>
+                    <th>Zona</th>
                     <th>Producto</th>
-                    <th>Movimiento</th>
-                    <th>Liquidacion</th>
+                    <th>Salida</th>
+                    <th>Env.</th>
+                    <th>Rec.</th>
+                    <th>Lleg.</th>
+                    <th>Venta Esp.</th>
+                    <th>%</th>
+                    <th>Sueldo</th>
+                    <th>Producido</th>
+                    <th>Pico</th>
                     <th>Cierre</th>
-                    <th>Accion</th>
                 </tr>
             </thead>
             <tbody>
                 {% for bloque in bloques_informe %}
-                    <tr class="group-row">
-                        <td>
-                            <span class="cell-title">{{ bloque.fecha|date:"d/m/Y" }}</span>
-                            <span class="cell-sub">{{ bloque.vendedor }}</span>
-                            <span class="cell-sub">{{ bloque.zona }}</span>
-                        </td>
-                        <td>
-                            <div class="product-stack">
-                                {% for fila in bloque.filas %}
-                                    <div class="product-entry">
-                                        <span class="cell-title">{{ fila.producto.nombre }}</span>
-                                        <span class="pill">{{ fila.comision_porcentaje }}% comision</span>
+                    {% for fila in bloque.filas %}
+                        <tr{% if forloop.first %} class="group-start"{% endif %}>
+                            {% if forloop.first %}
+                                <td rowspan="{{ bloque.filas|length }}" data-label="Fecha">
+                                    <span class="report-main">{{ bloque.fecha|date:"d/m/Y" }}</span>
+                                </td>
+                                <td rowspan="{{ bloque.filas|length }}" data-label="Vendedor">
+                                    <span class="report-main">{{ bloque.vendedor }}</span>
+                                </td>
+                                <td rowspan="{{ bloque.filas|length }}" data-label="Zona">
+                                    <span class="tag">{{ bloque.zona }}</span>
+                                </td>
+                            {% endif %}
+                            <td data-label="Producto">
+                                <span class="report-main">{{ fila.producto.nombre }}</span>
+                            </td>
+                            <td data-label="Salida"><span class="money">{{ fila.salida|cop }}</span></td>
+                            <td data-label="Enviada"><span class="money soft">{{ fila.enviada|cop }}</span></td>
+                            <td data-label="Recibida"><span class="money soft">{{ fila.recibida|cop }}</span></td>
+                            <td data-label="Llegada"><span class="money soft">{{ fila.llegada|cop }}</span></td>
+                            <td data-label="Venta esperada"><span class="money">{{ fila.venta_esperada_producto|cop }}</span></td>
+                            <td data-label="Comision"><span class="tag">{{ fila.comision_porcentaje }}%</span></td>
+                            <td data-label="Sueldo"><span class="money">{{ fila.sueldo|cop }}</span></td>
+                            <td data-label="Producido">
+                                <span class="money{% if fila.producido < 0 %} negative{% endif %}">{{ fila.producido|cop }}</span>
+                            </td>
+                            <td data-label="Pico">
+                                <span class="money{% if fila.pico < 0 %} negative{% endif %}">{{ fila.pico|cop }}</span>
+                            </td>
+                            {% if forloop.first %}
+                                <td rowspan="{{ bloque.filas|length }}" class="action-cell" data-label="Cierre">
+                                    <div class="day-summary">
+                                        <span class="mini">Descuadre</span>
+                                        <span class="money{% if bloque.descuadre > 0 %} negative{% endif %}">{{ bloque.descuadre|cop }}</span>
+                                        <span class="mini">Adelanto</span>
+                                        <span class="money">{{ bloque.adelanto|cop }}</span>
+                                        <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Modificar</a>
                                     </div>
-                                {% endfor %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="product-stack">
-                                {% for fila in bloque.filas %}
-                                    <div class="product-entry">
-                                        <div class="cell-grid">
-                                            <div class="mini-line"><span>Salida</span><strong>{{ fila.salida|cop }}</strong></div>
-                                            <div class="mini-line"><span>Enviada</span><strong>{{ fila.enviada|cop }}</strong></div>
-                                            <div class="mini-line"><span>Recibida</span><strong>{{ fila.recibida|cop }}</strong></div>
-                                            <div class="mini-line"><span>Llegada</span><strong>{{ fila.llegada|cop }}</strong></div>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="product-stack">
-                                {% for fila in bloque.filas %}
-                                    <div class="product-entry">
-                                        <div class="cell-grid">
-                                            <div class="mini-line"><span>Venta esp.</span><strong>{{ fila.venta_esperada_producto|cop }}</strong></div>
-                                            <div class="mini-line"><span>Sueldo</span><strong>{{ fila.sueldo|cop }}</strong></div>
-                                            <div class="mini-line"><span>Producido</span><strong class="{% if fila.producido < 0 %}negative{% endif %}">{{ fila.producido|cop }}</strong></div>
-                                            <div class="mini-line"><span>Pico</span><strong class="{% if fila.pico < 0 %}negative{% endif %}">{{ fila.pico|cop }}</strong></div>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="cell-grid">
-                                <div class="mini-line"><span>Descuadre</span><strong class="{% if bloque.descuadre > 0 %}negative{% endif %}">{{ bloque.descuadre|cop }}</strong></div>
-                                <div class="mini-line"><span>Adelanto</span><strong>{{ bloque.adelanto|cop }}</strong></div>
-                                <div class="mini-line"><span>Venta real</span><strong>{{ bloque.control.venta_real|cop }}</strong></div>
-                            </div>
-                        </td>
-                        <td>
-                            <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Modificar</a>
-                        </td>
-                    </tr>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
                 {% endfor %}
             </tbody>
         </table>

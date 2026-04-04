@@ -174,7 +174,7 @@ class Jornada(models.Model):
 
     @property
     def portal_path(self):
-        return reverse("portal_vendedor_token", args=[self.access_token])
+        return reverse("portal_vendedor_token_fecha", args=[self.fecha.isoformat(), self.access_token])
 
     @property
     def portal_url(self):

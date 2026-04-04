@@ -41,7 +41,7 @@ class PortalJornadaTests(TestCase):
         cliente = user.cliente_profile
         jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
 
-        self.assertTrue(jornada.portal_url.startswith(f"{settings.APP_BASE_URL}/portal/"))
+        self.assertTrue(jornada.portal_url.startswith(f"{settings.APP_BASE_URL}/portal/{jornada.fecha.isoformat()}/"))
 
     def test_portal_publico_muestra_vendedores_del_negocio(self):
         user = User.objects.create_user(username="cliente_vendedores", password="secret123")

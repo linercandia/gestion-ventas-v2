@@ -45,6 +45,7 @@ urlpatterns = [
     path('panel/informes/<int:control_id>/editar/', views.informe_editar, name='informe_editar'),
     path('panel/informes/<int:control_id>/eliminar/', views.informe_eliminar, name='informe_eliminar'),
     path('portal/', views.portal_vendedor, name='portal_vendedor'),
+    path('portal/<slug:fecha_jornada>/<uuid:token>/', views.portal_vendedor, name='portal_vendedor_token_fecha'),
     path('portal/<uuid:token>/', views.portal_vendedor, name='portal_vendedor_token'),
     path('gracias/', views.pagina_gracias, name='pagina_gracias'),
 ]

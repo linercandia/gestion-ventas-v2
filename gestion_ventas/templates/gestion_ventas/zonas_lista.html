@@ -5,10 +5,162 @@
 {% block content %}
 <section class="hero">
     <h2>Zonas y comisiones</h2>
-    <p>Define las zonas de venta. Cada producto debe tener su propio porcentaje de comision dentro de la zona.</p>
+    <p>Define las zonas de venta y asigna una comision por producto sin depender de tablas anchas.</p>
 </section>
 
-<section class="grid" style="grid-template-columns: 1.1fr 1.4fr;">
+<style>
+    .zones-layout {
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    .commission-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .commission-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 140px;
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        border: 1px solid rgba(201, 177, 141, 0.22);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.74);
+    }
+
+    .commission-item strong {
+        display: block;
+        font-size: 0.96rem;
+        letter-spacing: -0.02em;
+    }
+
+    .commission-item span {
+        color: var(--muted);
+        font-size: 0.82rem;
+    }
+
+    .zone-stack {
+        display: grid;
+        gap: 14px;
+    }
+
+    .zone-card {
+        border: 1px solid rgba(201, 177, 141, 0.24);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.8);
+        overflow: hidden;
+    }
+
+    .zone-card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 14px 16px;
+        background: rgba(15, 118, 110, 0.08);
+        border-bottom: 1px solid rgba(201, 177, 141, 0.18);
+    }
+
+    .zone-card-head h4 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: -0.02em;
+    }
+
+    .zone-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+    }
+
+    .zone-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(201, 177, 141, 0.22);
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .zone-card-body {
+        padding: 14px 16px 16px;
+    }
+
+    .zone-commissions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+    }
+
+    .zone-commission-chip {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: #fffdf8;
+        border: 1px solid rgba(201, 177, 141, 0.18);
+    }
+
+    .zone-commission-chip strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.9rem;
+    }
+
+    .zone-commission-chip span {
+        color: var(--brand-dark);
+        font-weight: 800;
+    }
+
+    .zone-empty {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .zone-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .zone-actions form {
+        margin: 0;
+    }
+
+    @media (max-width: 980px) {
+        .zones-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .commission-item {
+            grid-template-columns: 1fr;
+        }
+
+        .zone-card-head {
+            flex-direction: column;
+        }
+
+        .zone-commissions {
+            grid-template-columns: 1fr;
+        }
+
+        .zone-actions .btn,
+        .zone-actions button {
+            width: 100%;
+        }
+    }
+</style>
+
+<section class="zones-layout">
     <article class="card">
         <h3>{% if modo == "editar" %}Editar zona{% else %}Nueva zona{% endif %}</h3>
         <form method="post" class="form-grid">
@@ -16,23 +168,23 @@
             {{ form.as_p }}
 
             <h3 style="margin-top:8px;">Comision por producto</h3>
+            <p class="muted" style="margin:0;">Define el porcentaje que se paga por cada producto dentro de esta zona.</p>
             {{ formset.management_form }}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>% comision</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in formset %}
-                        <tr>
-                            <td>{{ item.producto_nombre.value }}{{ item.producto_id }}</td>
-                            <td>{{ item.porcentaje_comision }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="commission-list">
+                {% for item in formset %}
+                    <div class="commission-item">
+                        <div>
+                            <strong>{{ item.producto_nombre.value }}</strong>
+                            <span>Comision individual para este producto</span>
+                            {{ item.producto_id }}
+                        </div>
+                        <div>
+                            <label style="margin-bottom:6px;">% comision</label>
+                            {{ item.porcentaje_comision }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
 
             <div class="actions">
                 <button class="btn btn-primary" type="submit">{% if modo == "editar" %}Actualizar zona{% else %}Guardar zona{% endif %}</button>
@@ -42,45 +194,49 @@
             </div>
         </form>
     </article>
+
     <article class="card">
         <h3>Zonas registradas</h3>
         {% if zonas %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Zona</th>
-                        <th>Codigo</th>
-                        <th>Comisiones por producto</th>
-                        <th>Estado</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for zona in zonas %}
-                        <tr>
-                            <td>{{ zona.nombre }}</td>
-                            <td>{{ zona.codigo }}</td>
-                            <td>
-                                {% for comision in zona.comisiones_producto.all %}
-                                    <div>{{ comision.producto.nombre }}: {{ comision.porcentaje_comision }}%</div>
-                                {% empty %}
-                                    <span class="muted">Sin productos configurados</span>
-                                {% endfor %}
-                            </td>
-                            <td>{% if zona.activa %}Activa{% else %}Inactiva{% endif %}</td>
-                            <td>
-                                <div class="actions">
-                                    <a class="btn btn-secondary" href="{% url 'zona_editar' zona.id %}">Editar</a>
-                                    <form method="post" action="{% url 'zona_eliminar' zona.id %}" style="display:inline;">
-                                        {% csrf_token %}
-                                        <button class="btn btn-secondary" type="submit" onclick="return confirm('¿Eliminar zona?');">Eliminar</button>
-                                    </form>
+            <div class="zone-stack">
+                {% for zona in zonas %}
+                    <section class="zone-card">
+                        <div class="zone-card-head">
+                            <div>
+                                <h4>{{ zona.nombre }}</h4>
+                                <div class="zone-meta">
+                                    {% if zona.codigo %}
+                                        <span class="zone-pill">Codigo: {{ zona.codigo }}</span>
+                                    {% endif %}
+                                    <span class="zone-pill">{% if zona.activa %}Activa{% else %}Inactiva{% endif %}</span>
                                 </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </div>
+                        </div>
+                        <div class="zone-card-body">
+                            {% if zona.comisiones_producto.all %}
+                                <div class="zone-commissions">
+                                    {% for comision in zona.comisiones_producto.all %}
+                                        <div class="zone-commission-chip">
+                                            <strong>{{ comision.producto.nombre }}</strong>
+                                            <span>{{ comision.porcentaje_comision }}%</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="zone-empty">Sin productos configurados para esta zona.</p>
+                            {% endif %}
+
+                            <div class="zone-actions">
+                                <a class="btn btn-secondary" href="{% url 'zona_editar' zona.id %}">Editar</a>
+                                <form method="post" action="{% url 'zona_eliminar' zona.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-danger" type="submit" onclick="return confirm('¿Eliminar zona?');">Eliminar</button>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
         {% else %}
             <p class="muted">Todavia no has creado zonas.</p>
         {% endif %}

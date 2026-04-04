@@ -25,8 +25,11 @@ SECRET_KEY = 'django-insecure-234o*%c&_q3*de#=grkfkmxc=d+p5ra1($8@uqul)lz_7^cii$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-APP_BASE_URL = os.getenv('APP_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
+ALLOWED_HOSTS = [
+    'linercandia.pythonanywhere.com',
+    '127.0.0.1',
+    'localhost'
+]
 
 
 # Application definition

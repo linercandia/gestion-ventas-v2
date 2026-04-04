@@ -18,8 +18,10 @@
                     <th>Zona</th>
                     <th>Vendedor</th>
                     <th>Venta esperada</th>
+                    <th>Enviado</th>
+                    <th>Regreso</th>
+                    <th>Venta</th>
                     <th>Rentabilidad</th>
-                    <th>Dinero</th>
                     <th>Descuadre</th>
                     <th>Estado</th>
                     <th></th>
@@ -32,8 +34,10 @@
                         <td>{{ control.zona.nombre }}</td>
                         <td>{{ control.vendedor_nombre }}</td>
                         <td>{{ control.total_venta_esperada }}</td>
+                        <td>{{ control.total_enviado_valorizado }}</td>
+                        <td>{{ control.total_regreso_valorizado }}</td>
+                        <td>{{ control.venta_real }}</td>
                         <td>{{ control.rentabilidad }}</td>
-                        <td>{{ control.dinero_entregado }}</td>
                         <td>{{ control.descuadre_dinero }}</td>
                         <td>
                             <span class="status{% if not control.cerrada %} off{% endif %}">

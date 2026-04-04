@@ -430,6 +430,9 @@ class PanelClienteTests(TestCase):
         self.assertEqual(response.context["filas_diarias"][1]["fecha"], fecha_fin - timedelta(days=1))
         self.assertEqual(response.context["filas_diarias"][2]["fecha"], fecha_inicio)
         self.assertFalse(response.context["filas_diarias"][1]["trabajo"])
+        self.assertEqual(response.context["resumen"]["total_venta"], Decimal("50000"))
+        self.assertEqual(response.context["resumen"]["total_venta_real"], Decimal("35000"))
+        self.assertEqual(response.context["resumen"]["total_regreso"], Decimal("10000"))
         self.assertEqual(response.context["resumen"]["total_comision"], Decimal("4000"))
         self.assertEqual(response.context["resumen"]["total_descuadre"], Decimal("5000"))
         self.assertEqual(response.context["resumen"]["total_adelantos_vinculados"], Decimal("1000"))
@@ -453,7 +456,9 @@ class PanelClienteTests(TestCase):
         InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
         Adelanto.objects.create(vendedor=user.cliente_profile.vendedores.create(nombre="Ana"), control=control, monto=Decimal("2000"))
 
-        self.assertEqual(control.total_venta_esperada, Decimal("40000"))
+        self.assertEqual(control.total_venta_esperada, Decimal("50000"))
+        self.assertEqual(control.total_venta_objetivo, Decimal("40000"))
+        self.assertEqual(control.venta_real, Decimal("35000"))
         self.assertEqual(control.comision_valor, Decimal("4000"))
         self.assertEqual(control.descuadre_dinero, Decimal("5000"))
         self.assertEqual(control.total_adelantos, Decimal("2000"))
@@ -476,5 +481,5 @@ class PanelClienteTests(TestCase):
         )
         InventarioControl.objects.create(control=control, producto=producto, cantidad_salida=5, cantidad_llegada=1)
 
-        self.assertEqual(control.total_venta_esperada, Decimal("40000"))
+        self.assertEqual(control.total_venta_esperada, Decimal("50000"))
         self.assertEqual(control.comision_valor, Decimal("8000"))

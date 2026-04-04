@@ -32,7 +32,7 @@
 
     <div style="display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:10px; margin-bottom:14px;">
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
-            <div class="muted">Ventas</div>
+            <div class="muted">Venta esperada</div>
             <strong>{{ resumen.total_venta }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
@@ -55,6 +55,9 @@
                 <tr>
                     <th>Fecha</th>
                     <th>Zona</th>
+                    <th>Venta esperada</th>
+                    <th>Enviado</th>
+                    <th>Regreso</th>
                     <th>Venta</th>
                     <th>Comision</th>
                     <th>Descuadre</th>
@@ -74,6 +77,9 @@
                             {% endif %}
                         </td>
                         <td>{{ fila.venta }}</td>
+                        <td>{{ fila.enviado }}</td>
+                        <td>{{ fila.regreso }}</td>
+                        <td>{{ fila.venta_real }}</td>
                         <td>{{ fila.comision }}</td>
                         <td>{{ fila.descuadre }}</td>
                         <td>{{ fila.adelantos_jornada|add:fila.adelantos_extra }}</td>
@@ -85,6 +91,9 @@
                 <tr>
                     <th colspan="2">Total del periodo</th>
                     <th>{{ resumen.total_venta }}</th>
+                    <th>{{ resumen.total_enviado }}</th>
+                    <th>{{ resumen.total_regreso }}</th>
+                    <th>{{ resumen.total_venta_real }}</th>
                     <th>{{ resumen.total_comision }}</th>
                     <th>{{ resumen.total_descuadre }}</th>
                     <th>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales }}</th>

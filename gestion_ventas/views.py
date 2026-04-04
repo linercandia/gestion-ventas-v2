@@ -480,6 +480,9 @@ def desprendible_pago(request):
             adelantos_adicionales = adelantos_adicionales.filter(vendedor=vendedor)
 
         total_venta = sum(control.total_venta_esperada for control in controles)
+        total_enviado = sum(control.total_enviado_valorizado for control in controles)
+        total_regreso = sum(control.total_regreso_valorizado for control in controles)
+        total_venta_real = sum(control.venta_real for control in controles)
         total_comision = sum(control.comision_valor for control in controles)
         total_descuadre = sum(control.descuadre_dinero for control in controles)
         total_adelantos_vinculados = sum(control.total_adelantos for control in controles)
@@ -515,6 +518,9 @@ def desprendible_pago(request):
                     "trabajo": bool(controles_dia),
                     "zonas": ", ".join(control.zona.nombre for control in controles_dia) or "-",
                     "venta": venta_dia,
+                    "enviado": sum(control.total_enviado_valorizado for control in controles_dia),
+                    "regreso": sum(control.total_regreso_valorizado for control in controles_dia),
+                    "venta_real": sum(control.venta_real for control in controles_dia),
                     "comision": comision_dia,
                     "descuadre": descuadre_dia,
                     "adelantos_jornada": adelantos_jornada_dia,
@@ -530,6 +536,9 @@ def desprendible_pago(request):
             "fecha_inicio": fecha_inicio,
             "fecha_fin": fecha_fin,
             "total_venta": total_venta,
+            "total_enviado": total_enviado,
+            "total_regreso": total_regreso,
+            "total_venta_real": total_venta_real,
             "total_comision": total_comision,
             "total_descuadre": total_descuadre,
             "total_adelantos_vinculados": total_adelantos_vinculados,

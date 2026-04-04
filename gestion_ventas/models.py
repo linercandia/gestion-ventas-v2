@@ -237,12 +237,46 @@ class ControlZonaJornada(models.Model):
             self.cantidad_enviada_producto(detalle.producto) + detalle.cantidad_llegada
         )
 
+    def valor_salida_producto(self, detalle):
+        return detalle.cantidad_salida * detalle.producto.precio_venta
+
+    def valor_recibido_producto(self, detalle):
+        return self.cantidad_recibida_producto(detalle.producto) * detalle.producto.precio_venta
+
+    def valor_enviado_producto(self, detalle):
+        return self.cantidad_enviada_producto(detalle.producto) * detalle.producto.precio_venta
+
+    def valor_regreso_producto(self, detalle):
+        return detalle.cantidad_llegada * detalle.producto.precio_venta
+
+    @property
+    def total_salida_valorizada(self):
+        return sum(self.valor_salida_producto(detalle) for detalle in self.detalles.select_related("producto").all())
+
+    @property
+    def total_recibido_valorizado(self):
+        return sum(self.valor_recibido_producto(detalle) for detalle in self.detalles.select_related("producto").all())
+
+    @property
+    def total_enviado_valorizado(self):
+        return sum(self.valor_enviado_producto(detalle) for detalle in self.detalles.select_related("producto").all())
+
+    @property
+    def total_regreso_valorizado(self):
+        return sum(self.valor_regreso_producto(detalle) for detalle in self.detalles.select_related("producto").all())
+
     @property
     def total_venta_esperada(self):
-        total = 0
-        for detalle in self.detalles.select_related("producto").all():
-            total += self.unidades_vendidas_producto(detalle) * detalle.producto.precio_venta
-        return total
+        return self.total_salida_valorizada + self.total_recibido_valorizado
+
+    @property
+    def total_venta_objetivo(self):
+        total = self.total_venta_esperada - self.total_enviado_valorizado - self.total_regreso_valorizado
+        return total if total > 0 else 0
+
+    @property
+    def venta_real(self):
+        return self.dinero_entregado
 
     @property
     def comision_porcentaje(self):
@@ -263,7 +297,7 @@ class ControlZonaJornada(models.Model):
 
     @property
     def descuadre_dinero(self):
-        diferencia = self.total_venta_esperada - self.dinero_entregado
+        diferencia = self.total_venta_objetivo - self.venta_real
         return diferencia if diferencia > 0 else 0
 
     @property
@@ -273,7 +307,7 @@ class ControlZonaJornada(models.Model):
 
     @property
     def rentabilidad(self):
-        rentabilidad = self.total_venta_esperada - self.comision_valor - self.descuadre_dinero
+        rentabilidad = self.venta_real - self.comision_valor
         return rentabilidad if rentabilidad > 0 else 0
 
     def __str__(self):

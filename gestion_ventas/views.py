@@ -564,6 +564,8 @@ def desprendible_pago(request):
         total_regreso = sum(control.total_regreso_valorizado for control in controles)
         total_venta_real = sum(control.venta_real for control in controles)
         total_comision = sum(control.comision_valor for control in controles)
+        total_producido = sum(control.producido for control in controles)
+        total_pico = sum(control.pico for control in controles)
         total_descuadre = sum(control.descuadre_dinero for control in controles)
         total_adelantos_vinculados = sum(control.total_adelantos for control in controles)
         total_adelantos_adicionales = adelantos_adicionales.aggregate(total=Sum("monto"))["total"] or Decimal("0")
@@ -586,6 +588,8 @@ def desprendible_pago(request):
             venta_dia = sum(control.total_venta_esperada for control in controles_dia)
             base_pago_dia = sum(control.total_base_pago for control in controles_dia)
             comision_dia = sum(control.comision_valor for control in controles_dia)
+            producido_dia = sum(control.producido for control in controles_dia)
+            pico_dia = sum(control.pico for control in controles_dia)
             descuadre_dia = sum(control.descuadre_dinero for control in controles_dia)
             adelantos_jornada_dia = sum(control.total_adelantos for control in controles_dia)
             adelantos_extra_total_dia = sum(adelanto.monto for adelanto in adelantos_extra_dia)
@@ -604,6 +608,8 @@ def desprendible_pago(request):
                     "regreso": sum(control.total_regreso_valorizado for control in controles_dia),
                     "venta_real": sum(control.venta_real for control in controles_dia),
                     "comision": comision_dia,
+                    "producido": producido_dia,
+                    "pico": pico_dia,
                     "descuadre": descuadre_dia,
                     "adelantos_jornada": adelantos_jornada_dia,
                     "adelantos_extra": adelantos_extra_total_dia,
@@ -623,6 +629,8 @@ def desprendible_pago(request):
             "total_regreso": total_regreso,
             "total_venta_real": total_venta_real,
             "total_comision": total_comision,
+            "total_producido": total_producido,
+            "total_pico": total_pico,
             "total_descuadre": total_descuadre,
             "total_adelantos_vinculados": total_adelantos_vinculados,
             "total_adelantos_adicionales": total_adelantos_adicionales,

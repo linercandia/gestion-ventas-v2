@@ -7,55 +7,169 @@
 <section class="hero">
     <h2>Pagos a vendedores</h2>
     <p>
-        El pago se calcula por producto con la base de salida mas recibido menos enviado, aplica la comision
-        configurada por zona y producto, y despues descuenta adelantos y descuadres.
+        El pago se calcula con base de pago, sueldo por producto, adelantos y descuadre. El dinero real se usa
+        para controlar el faltante frente a la venta esperada.
     </p>
     <div class="actions">
         <a class="btn btn-secondary" href="{% url 'desprendible_pago' %}">Ver desprendible de pago</a>
     </div>
 </section>
 
+<style>
+    .pay-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid rgba(201, 177, 141, 0.24);
+        border-radius: 18px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.78);
+    }
+
+    .pay-table th {
+        background: rgba(15, 118, 110, 0.08);
+        color: var(--brand-dark);
+        font-size: 0.74rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        padding: 10px 8px;
+    }
+
+    .pay-table td {
+        padding: 10px 8px;
+        vertical-align: top;
+        font-size: 0.9rem;
+    }
+
+    .pay-main {
+        font-weight: 800;
+        color: var(--ink);
+        line-height: 1.25;
+    }
+
+    .pay-sub {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.3;
+    }
+
+    .pay-stack {
+        display: grid;
+        gap: 4px;
+    }
+
+    .pay-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+    }
+
+    .pay-line span:first-child {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .pay-line strong {
+        font-size: 0.9rem;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .pay-total {
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .negative {
+        color: var(--danger);
+    }
+
+    @media (max-width: 900px) {
+        .pay-table {
+            table-layout: auto;
+        }
+
+        .pay-table th,
+        .pay-table td {
+            padding: 8px 6px;
+            font-size: 0.8rem;
+        }
+
+        .pay-line {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .pay-line strong {
+            text-align: left;
+        }
+    }
+</style>
+
 <section class="card">
     <h3>Liquidaciones cerradas</h3>
     {% if controles %}
-        <div class="table-shell">
-        <table>
+        <table class="pay-table">
+            <colgroup>
+                <col style="width: 18%;">
+                <col style="width: 18%;">
+                <col style="width: 24%;">
+                <col style="width: 20%;">
+                <col style="width: 20%;">
+            </colgroup>
             <thead>
                 <tr>
-                    <th>Fecha</th>
-                    <th>Vendedor</th>
-                    <th>Zona</th>
-                    <th>Base pago</th>
-                    <th>Venta esperada</th>
-                    <th>Enviado</th>
-                    <th>Llegada</th>
-                    <th>Venta real</th>
-                    <th>Sueldo</th>
-                    <th>Adelantos</th>
-                    <th>Descuadre</th>
+                    <th>Jornada</th>
+                    <th>Base y venta</th>
+                    <th>Liquidacion</th>
+                    <th>Control</th>
                     <th>Pago neto</th>
                 </tr>
             </thead>
             <tbody>
                 {% for control in controles %}
                     <tr>
-                        <td>{{ control.jornada.fecha }}</td>
-                        <td>{{ control.vendedor_nombre }}</td>
-                        <td>{{ control.zona.nombre }}</td>
-                        <td>{{ control.total_base_pago|cop }}</td>
-                        <td>{{ control.total_venta_esperada|cop }}</td>
-                        <td>{{ control.total_enviado_valorizado|cop }}</td>
-                        <td>{{ control.total_regreso_valorizado|cop }}</td>
-                        <td>{{ control.venta_real|cop }}</td>
-                        <td>{{ control.comision_valor|cop }}</td>
-                        <td>{{ control.total_adelantos|cop }}</td>
-                        <td>{{ control.descuadre_dinero|cop }}</td>
-                        <td><strong>{{ control.pago_neto|cop }}</strong></td>
+                        <td>
+                            <span class="pay-main">{{ control.jornada.fecha|date:"d/m/Y" }}</span>
+                            <span class="pay-sub">{{ control.vendedor_nombre }}</span>
+                            <span class="pay-sub">{{ control.zona.nombre }}</span>
+                        </td>
+                        <td>
+                            <div class="pay-stack">
+                                <div class="pay-line"><span>Base pago</span><strong>{{ control.total_base_pago|cop }}</strong></div>
+                                <div class="pay-line"><span>Venta esperada</span><strong>{{ control.total_venta_esperada|cop }}</strong></div>
+                                <div class="pay-line"><span>Venta real</span><strong>{{ control.venta_real|cop }}</strong></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="pay-stack">
+                                <div class="pay-line"><span>Sueldo</span><strong>{{ control.comision_valor|cop }}</strong></div>
+                                <div class="pay-line"><span>Producido</span><strong>{{ control.producido|cop }}</strong></div>
+                                <div class="pay-line"><span>Pico</span><strong class="{% if control.pico < 0 %}negative{% endif %}">{{ control.pico|cop }}</strong></div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="pay-stack">
+                                <div class="pay-line"><span>Enviado</span><strong>{{ control.total_enviado_valorizado|cop }}</strong></div>
+                                <div class="pay-line"><span>Llegada</span><strong>{{ control.total_regreso_valorizado|cop }}</strong></div>
+                                <div class="pay-line"><span>Adelantos</span><strong>{{ control.total_adelantos|cop }}</strong></div>
+                                <div class="pay-line"><span>Descuadre</span><strong class="{% if control.descuadre_dinero > 0 %}negative{% endif %}">{{ control.descuadre_dinero|cop }}</strong></div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="pay-total">{{ control.pago_neto|cop }}</span>
+                            <span class="pay-sub">Sueldo - adelantos - descuadre</span>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
-        </div>
     {% else %}
         <p class="muted">Todavia no hay controles cerrados para calcular pagos.</p>
     {% endif %}

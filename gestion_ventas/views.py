@@ -8,6 +8,7 @@ from django.db.models import Sum
 from django.forms import modelformset_factory
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from .forms import (
@@ -206,38 +207,59 @@ def informes_cliente(request):
             controles = controles.filter(zona=zona)
 
     filas_informe = []
+    bloques_informe = []
     for control in controles:
         productos = control.productos_con_movimiento()
         if not productos:
             continue
+        filas_control = []
         for indice, producto in enumerate(productos):
-            filas_informe.append(
-                {
-                    "control": control,
-                    "producto": producto,
-                    "fecha": control.jornada.fecha,
-                    "vendedor": control.vendedor_nombre,
-                    "zona": control.zona.nombre,
-                    "salida": control.valor_capturado_producto(producto, control.cantidad_salida_producto(producto)),
-                    "enviada": control.valor_capturado_producto(producto, control.cantidad_enviada_producto(producto)),
-                    "recibida": control.valor_capturado_producto(producto, control.cantidad_recibida_producto(producto)),
-                    "llegada": control.valor_capturado_producto(producto, control.cantidad_llegada_producto(producto)),
-                    "venta_esperada_producto": control.valor_venta_esperada_producto(producto),
-                    "comision_porcentaje": control.zona.get_porcentaje_comision_producto(producto),
-                    "sueldo": control.sueldo_producto(producto),
-                    "producido": control.producido_producto(producto),
-                    "pico": control.pico_producto(producto),
-                    "descuadre": control.descuadre_dinero,
-                    "adelanto": control.total_adelantos,
-                    "rowspan": len(productos),
-                    "es_primera": indice == 0,
-                }
-            )
+            fila = {
+                "control": control,
+                "producto": producto,
+                "fecha": control.jornada.fecha,
+                "vendedor": control.vendedor_nombre,
+                "zona": control.zona.nombre,
+                "salida": control.valor_capturado_producto(producto, control.cantidad_salida_producto(producto)),
+                "enviada": control.valor_capturado_producto(producto, control.cantidad_enviada_producto(producto)),
+                "recibida": control.valor_capturado_producto(producto, control.cantidad_recibida_producto(producto)),
+                "llegada": control.valor_capturado_producto(producto, control.cantidad_llegada_producto(producto)),
+                "venta_esperada_producto": control.valor_venta_esperada_producto(producto),
+                "comision_porcentaje": control.zona.get_porcentaje_comision_producto(producto),
+                "sueldo": control.sueldo_producto(producto),
+                "producido": control.producido_producto(producto),
+                "pico": control.pico_producto(producto),
+                "descuadre": control.descuadre_dinero,
+                "adelanto": control.total_adelantos,
+                "rowspan": len(productos),
+                "es_primera": indice == 0,
+            }
+            filas_informe.append(fila)
+            filas_control.append(fila)
+
+        bloques_informe.append(
+            {
+                "control": control,
+                "fecha": control.jornada.fecha,
+                "vendedor": control.vendedor_nombre,
+                "zona": control.zona.nombre,
+                "descuadre": control.descuadre_dinero,
+                "adelanto": control.total_adelantos,
+                "accion_url": reverse("informe_editar", args=[control.id]),
+                "filas": filas_control,
+            }
+        )
 
     return render(
         request,
         "gestion_ventas/informes_lista.html",
-        {"cliente": cliente, "form": form, "filas_informe": filas_informe, "controles": controles},
+        {
+            "cliente": cliente,
+            "form": form,
+            "filas_informe": filas_informe,
+            "bloques_informe": bloques_informe,
+            "controles": controles,
+        },
     )
 
 

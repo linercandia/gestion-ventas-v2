@@ -18,60 +18,256 @@
     </form>
 </section>
 
+<style>
+    .report-stack {
+        display: grid;
+        gap: 18px;
+    }
+
+    .report-block {
+        border: 1px solid rgba(201, 177, 141, 0.28);
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 248, 240, 0.96));
+        overflow: hidden;
+    }
+
+    .report-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 18px 20px;
+        background: linear-gradient(135deg, rgba(15, 118, 110, 0.1), rgba(217, 119, 6, 0.08));
+        border-bottom: 1px solid rgba(201, 177, 141, 0.2);
+    }
+
+    .report-title {
+        display: grid;
+        gap: 6px;
+    }
+
+    .report-title h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        letter-spacing: -0.03em;
+    }
+
+    .report-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .report-meta span {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(201, 177, 141, 0.28);
+        color: var(--muted);
+        font-size: 0.86rem;
+        font-weight: 700;
+    }
+
+    .report-products {
+        display: grid;
+        gap: 14px;
+        padding: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .product-panel {
+        border: 1px solid rgba(201, 177, 141, 0.24);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.86);
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .product-panel h5 {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--brand-dark);
+        letter-spacing: -0.02em;
+    }
+
+    .product-topline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .product-topline .tag {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand-dark);
+        font-size: 0.82rem;
+        font-weight: 800;
+    }
+
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .metric {
+        background: #fffdf8;
+        border: 1px solid rgba(201, 177, 141, 0.2);
+        border-radius: 14px;
+        padding: 10px 12px;
+    }
+
+    .metric-label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+    }
+
+    .metric-value {
+        font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .report-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        padding: 0 18px 18px;
+    }
+
+    .summary-box {
+        border-radius: 16px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.84);
+        border: 1px solid rgba(201, 177, 141, 0.2);
+    }
+
+    .summary-box strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.02rem;
+        letter-spacing: -0.03em;
+    }
+
+    @media (max-width: 900px) {
+        .report-head {
+            flex-direction: column;
+        }
+
+        .report-summary {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .report-products,
+        .metric-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .product-topline {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .report-head,
+        .report-products,
+        .report-summary {
+            padding-left: 14px;
+            padding-right: 14px;
+        }
+    }
+</style>
+
 <section class="card">
     <h3>Trazabilidad por producto</h3>
-    {% if filas_informe %}
-        <div class="table-shell">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Vendedor</th>
-                        <th>Zona</th>
-                        <th>Producto</th>
-                        <th>Salida</th>
-                        <th>Enviada</th>
-                        <th>Recibida</th>
-                        <th>Llegada</th>
-                        <th>Venta esperada</th>
-                        <th>% comision</th>
-                        <th>Sueldo</th>
-                        <th>Producido</th>
-                        <th>Pico</th>
-                        <th>Descuadre</th>
-                        <th>Adelanto</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fila in filas_informe %}
-                        <tr>
-                            {% if fila.es_primera %}
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.fecha|date:"d/m/Y" }}</td>
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.vendedor }}</td>
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.zona }}</td>
-                            {% endif %}
-                            <td>{{ fila.producto.nombre }}</td>
-                            <td>{{ fila.salida|cop }}</td>
-                            <td>{{ fila.enviada|cop }}</td>
-                            <td>{{ fila.recibida|cop }}</td>
-                            <td>{{ fila.llegada|cop }}</td>
-                            <td>{{ fila.venta_esperada_producto|cop }}</td>
-                            <td>{{ fila.comision_porcentaje }}%</td>
-                            <td>{{ fila.sueldo|cop }}</td>
-                            <td>{{ fila.producido|cop }}</td>
-                            <td>{{ fila.pico|cop }}</td>
-                            {% if fila.es_primera %}
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.descuadre|cop }}</td>
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.adelanto|cop }}</td>
-                                <td rowspan="{{ fila.rowspan }}">
-                                    <a class="btn btn-secondary" href="{% url 'informe_editar' fila.control.id %}">Modificar</a>
-                                </td>
-                            {% endif %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    {% if bloques_informe %}
+        <div class="report-stack">
+            {% for bloque in bloques_informe %}
+                <article class="report-block">
+                    <div class="report-head">
+                        <div class="report-title">
+                            <h4>{{ bloque.vendedor }}</h4>
+                            <div class="report-meta">
+                                <span>{{ bloque.fecha|date:"d/m/Y" }}</span>
+                                <span>{{ bloque.zona }}</span>
+                                <span>{{ bloque.control.detalles.count }} producto{{ bloque.control.detalles.count|pluralize }}</span>
+                            </div>
+                        </div>
+                        <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Modificar</a>
+                    </div>
+
+                    <div class="report-products">
+                        {% for fila in bloque.filas %}
+                            <section class="product-panel">
+                                <div class="product-topline">
+                                    <h5>{{ fila.producto.nombre }}</h5>
+                                    <span class="tag">{{ fila.comision_porcentaje }}% comision</span>
+                                </div>
+                                <div class="metric-grid">
+                                    <div class="metric">
+                                        <span class="metric-label">Salida</span>
+                                        <span class="metric-value">{{ fila.salida|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Enviada</span>
+                                        <span class="metric-value">{{ fila.enviada|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Recibida</span>
+                                        <span class="metric-value">{{ fila.recibida|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Llegada</span>
+                                        <span class="metric-value">{{ fila.llegada|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Venta esperada</span>
+                                        <span class="metric-value">{{ fila.venta_esperada_producto|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Sueldo</span>
+                                        <span class="metric-value">{{ fila.sueldo|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Producido</span>
+                                        <span class="metric-value">{{ fila.producido|cop }}</span>
+                                    </div>
+                                    <div class="metric">
+                                        <span class="metric-label">Pico</span>
+                                        <span class="metric-value">{{ fila.pico|cop }}</span>
+                                    </div>
+                                </div>
+                            </section>
+                        {% endfor %}
+                    </div>
+
+                    <div class="report-summary">
+                        <div class="summary-box">
+                            <span class="metric-label">Descuadre del dia</span>
+                            <strong>{{ bloque.descuadre|cop }}</strong>
+                        </div>
+                        <div class="summary-box">
+                            <span class="metric-label">Adelanto del dia</span>
+                            <strong>{{ bloque.adelanto|cop }}</strong>
+                        </div>
+                        <div class="summary-box">
+                            <span class="metric-label">Venta real recibida</span>
+                            <strong>{{ bloque.control.venta_real|cop }}</strong>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
         </div>
     {% else %}
         <p class="muted">No hay registros para los filtros seleccionados.</p>

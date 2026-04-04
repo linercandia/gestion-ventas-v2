@@ -361,8 +361,7 @@ class ControlZonaJornada(models.Model):
 
     @property
     def rentabilidad(self):
-        producido = self.venta_real - self.comision_valor
-        return producido if producido > 0 else 0
+        return self.total_venta_esperada - self.comision_valor
 
     @property
     def producido(self):

@@ -1,4 +1,5 @@
 {% extends "gestion_ventas/base_panel.html" %}
+{% load moneda %}
 
 {% block title %}Pagos{% endblock %}
 
@@ -41,15 +42,15 @@
                         <td>{{ control.jornada.fecha }}</td>
                         <td>{{ control.vendedor_nombre }}</td>
                         <td>{{ control.zona.nombre }}</td>
-                        <td>{{ control.total_base_pago }}</td>
-                        <td>{{ control.total_venta_esperada }}</td>
-                        <td>{{ control.total_enviado_valorizado }}</td>
-                        <td>{{ control.total_regreso_valorizado }}</td>
-                        <td>{{ control.venta_real }}</td>
-                        <td>{{ control.comision_valor }}</td>
-                        <td>{{ control.total_adelantos }}</td>
-                        <td>{{ control.descuadre_dinero }}</td>
-                        <td><strong>{{ control.pago_neto }}</strong></td>
+                        <td>{{ control.total_base_pago|cop }}</td>
+                        <td>{{ control.total_venta_esperada|cop }}</td>
+                        <td>{{ control.total_enviado_valorizado|cop }}</td>
+                        <td>{{ control.total_regreso_valorizado|cop }}</td>
+                        <td>{{ control.venta_real|cop }}</td>
+                        <td>{{ control.comision_valor|cop }}</td>
+                        <td>{{ control.total_adelantos|cop }}</td>
+                        <td>{{ control.descuadre_dinero|cop }}</td>
+                        <td><strong>{{ control.pago_neto|cop }}</strong></td>
                     </tr>
                 {% endfor %}
             </tbody>

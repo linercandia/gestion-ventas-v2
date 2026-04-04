@@ -1,4 +1,5 @@
 {% extends "gestion_ventas/base_panel.html" %}
+{% load moneda %}
 
 {% block title %}Desprendible de Pago{% endblock %}
 
@@ -26,30 +27,30 @@
         </div>
         <div style="text-align:right;">
             <div class="muted">Total neto a pagar</div>
-            <div class="kpi" style="font-size:1.8rem;"><strong>{{ resumen.total_pagar }}</strong></div>
+            <div class="kpi" style="font-size:1.8rem;"><strong>{{ resumen.total_pagar|cop }}</strong></div>
         </div>
     </div>
 
     <div style="display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:10px; margin-bottom:14px;">
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
             <div class="muted">Base pago</div>
-            <strong>{{ resumen.total_base_pago }}</strong>
+            <strong>{{ resumen.total_base_pago|cop }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
             <div class="muted">Venta esperada</div>
-            <strong>{{ resumen.total_venta }}</strong>
+            <strong>{{ resumen.total_venta|cop }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
             <div class="muted">Sueldo</div>
-            <strong>{{ resumen.total_comision }}</strong>
+            <strong>{{ resumen.total_comision|cop }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
             <div class="muted">Descuadres</div>
-            <strong>{{ resumen.total_descuadre }}</strong>
+            <strong>{{ resumen.total_descuadre|cop }}</strong>
         </div>
         <div style="background:#f8fafc; border:1px solid #eadfce; border-radius:14px; padding:10px;">
             <div class="muted">Adelantos</div>
-            <strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales }}</strong>
+            <strong>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales|cop }}</strong>
         </div>
     </div>
 
@@ -81,30 +82,30 @@
                                 <span class="muted">Sin registro</span>
                             {% endif %}
                         </td>
-                        <td>{{ fila.base_pago }}</td>
-                        <td>{{ fila.venta }}</td>
-                        <td>{{ fila.enviado }}</td>
-                        <td>{{ fila.regreso }}</td>
-                        <td>{{ fila.venta_real }}</td>
-                        <td>{{ fila.comision }}</td>
-                        <td>{{ fila.descuadre }}</td>
-                        <td>{{ fila.adelantos_jornada|add:fila.adelantos_extra }}</td>
-                        <td><strong>{{ fila.pago }}</strong></td>
+                        <td>{{ fila.base_pago|cop }}</td>
+                        <td>{{ fila.venta|cop }}</td>
+                        <td>{{ fila.enviado|cop }}</td>
+                        <td>{{ fila.regreso|cop }}</td>
+                        <td>{{ fila.venta_real|cop }}</td>
+                        <td>{{ fila.comision|cop }}</td>
+                        <td>{{ fila.descuadre|cop }}</td>
+                        <td>{{ fila.adelantos_jornada|add:fila.adelantos_extra|cop }}</td>
+                        <td><strong>{{ fila.pago|cop }}</strong></td>
                     </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr>
                     <th colspan="2">Total del periodo</th>
-                    <th>{{ resumen.total_base_pago }}</th>
-                    <th>{{ resumen.total_venta }}</th>
-                    <th>{{ resumen.total_enviado }}</th>
-                    <th>{{ resumen.total_regreso }}</th>
-                    <th>{{ resumen.total_venta_real }}</th>
-                    <th>{{ resumen.total_comision }}</th>
-                    <th>{{ resumen.total_descuadre }}</th>
-                    <th>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales }}</th>
-                    <th><strong>{{ resumen.total_pagar }}</strong></th>
+                    <th>{{ resumen.total_base_pago|cop }}</th>
+                    <th>{{ resumen.total_venta|cop }}</th>
+                    <th>{{ resumen.total_enviado|cop }}</th>
+                    <th>{{ resumen.total_regreso|cop }}</th>
+                    <th>{{ resumen.total_venta_real|cop }}</th>
+                    <th>{{ resumen.total_comision|cop }}</th>
+                    <th>{{ resumen.total_descuadre|cop }}</th>
+                    <th>{{ resumen.total_adelantos_vinculados|add:resumen.total_adelantos_adicionales|cop }}</th>
+                    <th><strong>{{ resumen.total_pagar|cop }}</strong></th>
                 </tr>
             </tfoot>
         </table>
@@ -114,7 +115,7 @@
         <div class="muted" style="margin-top:12px; font-size:0.9rem;">
             Adelantos adicionales del periodo:
             {% for adelanto in adelantos_adicionales %}
-                {{ adelanto.fecha|date:"d/m" }} {{ adelanto.motivo|default:"Adelanto" }} ({{ adelanto.monto }}){% if not forloop.last %}, {% endif %}
+                {{ adelanto.fecha|date:"d/m" }} {{ adelanto.motivo|default:"Adelanto" }} ({{ adelanto.monto|cop }}){% if not forloop.last %}, {% endif %}
             {% endfor %}
         </div>
     {% endif %}

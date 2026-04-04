@@ -1,4 +1,5 @@
 {% extends "gestion_ventas/base_panel.html" %}
+{% load moneda %}
 
 {% block title %}Informes{% endblock %}
 
@@ -51,18 +52,18 @@
                                 <td rowspan="{{ fila.rowspan }}">{{ fila.zona }}</td>
                             {% endif %}
                             <td>{{ fila.producto.nombre }}</td>
-                            <td>{{ fila.salida }}</td>
-                            <td>{{ fila.enviada }}</td>
-                            <td>{{ fila.recibida }}</td>
-                            <td>{{ fila.llegada }}</td>
-                            <td>{{ fila.venta_esperada_producto }}</td>
+                            <td>{{ fila.salida|cop }}</td>
+                            <td>{{ fila.enviada|cop }}</td>
+                            <td>{{ fila.recibida|cop }}</td>
+                            <td>{{ fila.llegada|cop }}</td>
+                            <td>{{ fila.venta_esperada_producto|cop }}</td>
                             <td>{{ fila.comision_porcentaje }}%</td>
-                            <td>{{ fila.sueldo }}</td>
+                            <td>{{ fila.sueldo|cop }}</td>
                             {% if fila.es_primera %}
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.producido }}</td>
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.pico }}</td>
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.descuadre }}</td>
-                                <td rowspan="{{ fila.rowspan }}">{{ fila.adelanto }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.producido|cop }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.pico|cop }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.descuadre|cop }}</td>
+                                <td rowspan="{{ fila.rowspan }}">{{ fila.adelanto|cop }}</td>
                                 <td rowspan="{{ fila.rowspan }}">
                                     <a class="btn btn-secondary" href="{% url 'informe_editar' fila.control.id %}">Modificar</a>
                                 </td>

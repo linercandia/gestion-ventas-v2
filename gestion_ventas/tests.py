@@ -8,6 +8,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from .models import Adelanto, Cliente, ControlZonaJornada, EnvioInterzona, InventarioControl, Jornada, Producto, Vendedor, Zona, ZonaProductoComision
+from .templatetags.moneda import cop
 
 
 User = get_user_model()
@@ -18,6 +19,10 @@ class ClienteSignalsTests(TestCase):
         user = User.objects.create_user(username="cliente_demo", password="secret123")
 
         self.assertTrue(Cliente.objects.filter(usuario=user).exists())
+
+    def test_filtro_cop_formatea_sin_decimales(self):
+        self.assertEqual(cop(Decimal("12345.67")), "$ 12.346")
+        self.assertEqual(cop(Decimal("-5000")), "-$ 5.000")
 
 
 class PortalJornadaTests(TestCase):
@@ -465,7 +470,7 @@ class PanelClienteTests(TestCase):
         self.assertEqual(control.comision_valor, Decimal("5000"))
         self.assertEqual(control.descuadre_dinero, Decimal("5000"))
         self.assertEqual(control.total_adelantos, Decimal("2000"))
-        self.assertEqual(control.rentabilidad, Decimal("30000"))
+        self.assertEqual(control.rentabilidad, Decimal("35000"))
         self.assertEqual(control.pico, Decimal("-5000"))
         self.assertEqual(control.pago_neto, 0)
 
@@ -560,5 +565,5 @@ class PanelClienteTests(TestCase):
         self.assertEqual(fila["llegada"], Decimal("24000"))
         self.assertEqual(fila["venta_esperada_producto"], Decimal("36000"))
         self.assertEqual(fila["sueldo"], Decimal("23040"))
-        self.assertEqual(fila["producido"], Decimal("0"))
+        self.assertEqual(fila["producido"], Decimal("12960"))
         self.assertEqual(fila["pico"], Decimal("-18000"))

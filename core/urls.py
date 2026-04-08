@@ -14,6 +14,8 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path
 
@@ -49,3 +51,6 @@ urlpatterns = [
     path('portal/<uuid:token>/', views.portal_vendedor, name='portal_vendedor_token'),
     path('gracias/', views.pagina_gracias, name='pagina_gracias'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

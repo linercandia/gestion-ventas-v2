@@ -287,7 +287,7 @@
         {% if control.cerrada %}
             {% include "gestion_ventas/gracias.html" %}
         {% elif jornada %}
-            <form method="POST" id="ventasForm">
+            <form method="POST" id="ventasForm" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="accion" id="accionInput" value="">
                 
@@ -350,6 +350,23 @@
                                     <input type="text" name="prod_salida_{{ p.id }}" class="form-control form-control-sm formato-dinamico border-0 bg-white" data-formato="{{ p.formato_captura }}"
                                         {% for det in control.detalles.all %}{% if det.producto.id == p.id and det.cantidad_salida > 0 %} value="{{ det.cantidad_salida }}" {% endif %}{% endfor %}
                                         placeholder="0 {{ p.get_unidad_medida_display|lower }}" {% if control %}readonly{% else %}required{% endif %}>
+                                    <div class="mt-2">
+                                        <label class="small fw-bold text-muted mb-1">Foto de evidencia</label>
+                                        {% if control %}
+                                            {% for det in control.detalles.all %}
+                                                {% if det.producto.id == p.id %}
+                                                    {% if det.evidencia_salida %}
+                                                        <a href="{{ det.evidencia_salida.url }}" target="_blank" class="btn btn-outline-primary btn-sm w-100">VER FOTO</a>
+                                                    {% else %}
+                                                        <div class="form-control form-control-sm bg-light text-muted">Sin foto adjunta</div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <input type="file" name="prod_evidencia_{{ p.id }}" class="form-control form-control-sm" accept="image/*" capture="environment" required>
+                                            <div class="small text-muted mt-1">Subir foto de la cantidad de producto con el que sales.</div>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                             {% endfor %}

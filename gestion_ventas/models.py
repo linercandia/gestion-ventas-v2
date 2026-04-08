@@ -387,6 +387,7 @@ class InventarioControl(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     cantidad_salida = models.IntegerField(default=0)
     cantidad_llegada = models.IntegerField(default=0)
+    evidencia_salida = models.FileField(upload_to="inventario_evidencias/", blank=True, null=True)
 
     class Meta:
         verbose_name = "Inventario de Jornada"

@@ -1,11 +1,14 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from datetime import timedelta
 from decimal import Decimal
+import os
+import shutil
 
 from .models import Adelanto, Cliente, ControlZonaJornada, EnvioInterzona, InventarioControl, Jornada, Producto, Vendedor, Zona, ZonaProductoComision
 from .templatetags.moneda import cop
@@ -112,6 +115,56 @@ class PortalJornadaTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-formato="unidades"')
+
+    def test_portal_guarda_foto_de_evidencia_por_producto(self):
+        user = User.objects.create_user(username="cliente_foto", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+        foto = SimpleUploadedFile("evidencia.jpg", b"fake-image-content", content_type="image/jpeg")
+        temp_media = os.path.join(settings.BASE_DIR, "test_media_uploads")
+        os.makedirs(temp_media, exist_ok=True)
+
+        try:
+            with self.settings(MEDIA_ROOT=temp_media):
+                response = self.client.post(
+                    reverse("portal_vendedor_token", args=[jornada.access_token]),
+                    {
+                        "accion": "registrar_salida",
+                        "zona": str(zona.id),
+                        "nombre_vendedor_input": "Ana",
+                        f"prod_salida_{producto.id}": "12",
+                        f"prod_evidencia_{producto.id}": foto,
+                    },
+                )
+                detalle = InventarioControl.objects.get(control__jornada=jornada, producto=producto)
+        finally:
+            shutil.rmtree(temp_media, ignore_errors=True)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(detalle.evidencia_salida.name.endswith(".jpg"))
+
+    def test_portal_no_registra_salida_si_falta_una_foto(self):
+        user = User.objects.create_user(username="cliente_sin_foto", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+
+        response = self.client.post(
+            reverse("portal_vendedor_token", args=[jornada.access_token]),
+            {
+                "accion": "registrar_salida",
+                "zona": str(zona.id),
+                "nombre_vendedor_input": "Ana",
+                f"prod_salida_{producto.id}": "12",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Debes adjuntar una foto de evidencia para cada producto antes de registrar la salida.")
+        self.assertFalse(ControlZonaJornada.objects.filter(jornada=jornada, zona=zona).exists())
 
     def test_envio_se_crea_pendiente_y_se_confirma_en_destino(self):
         user = User.objects.create_user(username="cliente_envio", password="secret123")

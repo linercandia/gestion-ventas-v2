@@ -742,6 +742,32 @@ def portal_vendedor(request, fecha_jornada=None, token=None):
             vendedor = vendedores.filter(id=vendedor_id).first() if vendedor_id else None
             nombre_registrado = vendedor.nombre if vendedor else nombre_vendedor
 
+            fotos_faltantes = [
+                producto.nombre
+                for producto in productos
+                if not request.FILES.get(f"prod_evidencia_{producto.id}")
+            ]
+            if fotos_faltantes:
+                messages.error(
+                    request,
+                    "Debes adjuntar una foto de evidencia para cada producto antes de registrar la salida.",
+                )
+                control = None
+                request.session.pop("control_id", None)
+                ocupadas = ControlZonaJornada.objects.filter(jornada=jornada).values_list("zona_id", flat=True)
+                zonas_configuradas = zonas
+                context = {
+                    "jornada": jornada,
+                    "control": control,
+                    "productos": productos,
+                    "vendedores": vendedores,
+                    "zonas_disponibles": zonas.exclude(id__in=ocupadas),
+                    "zonas_configuradas": zonas_configuradas,
+                    "zonas_ocupadas_ids": list(ocupadas),
+                    "todas_las_zonas": zonas,
+                }
+                return render(request, "gestion_ventas/portal.html", context)
+
             control = ControlZonaJornada.objects.create(
                 jornada=jornada,
                 zona=zona,
@@ -752,10 +778,12 @@ def portal_vendedor(request, fecha_jornada=None, token=None):
 
             for producto in productos:
                 valor = request.POST.get(f"prod_salida_{producto.id}", "0").replace(".", "")
+                evidencia = request.FILES.get(f"prod_evidencia_{producto.id}")
                 InventarioControl.objects.create(
                     control=control,
                     producto=producto,
                     cantidad_salida=int(valor) if valor else 0,
+                    evidencia_salida=evidencia,
                 )
 
             sincronizar_a_sheets("movimientos", control)

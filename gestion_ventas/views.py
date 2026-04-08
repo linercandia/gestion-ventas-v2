@@ -188,8 +188,7 @@ def informes_cliente(request):
         return redirect("login")
 
     vendedores = cliente.vendedores.filter(activo=True).order_by("nombre")
-    zonas = cliente.zonas.filter(activa=True).order_by("nombre")
-    form = InformeFiltroForm(request.GET or None, vendedores=vendedores, zonas=zonas)
+    form = InformeFiltroForm(request.GET or None, vendedores=vendedores)
     controles = (
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
         .prefetch_related("detalles__producto", "adelantos")
@@ -199,13 +198,10 @@ def informes_cliente(request):
     if form.is_valid():
         fecha = form.cleaned_data.get("fecha")
         vendedor = form.cleaned_data.get("vendedor")
-        zona = form.cleaned_data.get("zona")
         if fecha:
             controles = controles.filter(jornada__fecha=fecha)
         if vendedor:
             controles = controles.filter(vendedor=vendedor)
-        if zona:
-            controles = controles.filter(zona=zona)
 
     filas_informe = []
     bloques_informe = []

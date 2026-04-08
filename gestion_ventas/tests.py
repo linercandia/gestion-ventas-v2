@@ -618,7 +618,7 @@ class PanelClienteTests(TestCase):
         self.client.login(username="cliente_informes", password="secret123")
         response = self.client.get(
             reverse("informes_cliente"),
-            {"fecha": timezone.localdate().isoformat(), "vendedor": vendedor.id, "zona": zona.id},
+            {"fecha": timezone.localdate().isoformat(), "vendedor": vendedor.id},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -630,6 +630,32 @@ class PanelClienteTests(TestCase):
         self.assertEqual(fila["sueldo"], Decimal("23040"))
         self.assertEqual(fila["producido"], Decimal("12960"))
         self.assertEqual(fila["pico"], Decimal("-23040"))
+
+    def test_informe_filtra_por_fecha_y_vendedor_mostrando_todas_sus_zonas_del_dia(self):
+        user = User.objects.create_user(username="cliente_informes_zonas", password="secret123")
+        cliente = user.cliente_profile
+        vendedor = Vendedor.objects.create(cliente=cliente, nombre="Pedro")
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona_a = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        zona_b = Zona.objects.create(cliente=cliente, nombre="Sur", activa=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+
+        control_a = ControlZonaJornada.objects.create(jornada=jornada, zona=zona_a, vendedor=vendedor, nombre_vendedor="Pedro", cerrada=True)
+        control_b = ControlZonaJornada.objects.create(jornada=jornada, zona=zona_b, vendedor=vendedor, nombre_vendedor="Pedro", cerrada=True)
+        InventarioControl.objects.create(control=control_a, producto=producto, cantidad_salida=10, cantidad_llegada=2)
+        InventarioControl.objects.create(control=control_b, producto=producto, cantidad_salida=8, cantidad_llegada=1)
+
+        self.client.login(username="cliente_informes_zonas", password="secret123")
+        response = self.client.get(
+            reverse("informes_cliente"),
+            {"fecha": timezone.localdate().isoformat(), "vendedor": vendedor.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        bloques = response.context["bloques_informe"]
+        self.assertEqual(len(bloques), 2)
+        zonas = {bloque["zona"] for bloque in bloques}
+        self.assertEqual(zonas, {"Centro", "Sur"})
 
     def test_informe_muestra_producido_por_producto_y_no_total_del_control(self):
         user = User.objects.create_user(username="cliente_informes_multi", password="secret123")

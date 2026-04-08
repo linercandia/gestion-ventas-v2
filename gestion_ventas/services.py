@@ -8,8 +8,6 @@ from .models import Jornada, Producto, Zona
 
 def obtener_jornada_portal(token=None, fecha=None, cliente=None):
     filtros = {"fecha": fecha, "activa": True} if fecha else {"activa": True}
-    if cliente is not None:
-        filtros["cliente"] = cliente
     queryset = Jornada.objects.select_related("cliente").filter(**filtros)
 
     if token:
@@ -19,17 +17,11 @@ def obtener_jornada_portal(token=None, fecha=None, cliente=None):
 
 
 def productos_disponibles_para_jornada(jornada):
-    queryset = Producto.objects.filter(activo=True)
-    if jornada and jornada.cliente_id:
-        queryset = queryset.filter(cliente=jornada.cliente)
-    return queryset
+    return Producto.objects.filter(activo=True)
 
 
 def zonas_disponibles_para_jornada(jornada):
-    queryset = Zona.objects.filter(activa=True)
-    if jornada and jornada.cliente_id:
-        queryset = queryset.filter(cliente=jornada.cliente)
-    return queryset
+    return Zona.objects.filter(activa=True)
 
 
 def sincronizar_a_sheets(tipo, instancia, nombre_vendedor=None):

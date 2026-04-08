@@ -23,7 +23,7 @@ from .forms import (
     ZonaForm,
     ZonaProductoComisionFormSet,
 )
-from .models import Adelanto, ControlZonaJornada, EnvioInterzona, InventarioControl, Producto, Vendedor, Zona, ZonaProductoComision
+from .models import Adelanto, Cliente, ControlZonaJornada, EnvioInterzona, InventarioControl, Jornada, Producto, Vendedor, Zona, ZonaProductoComision
 from .services import (
     obtener_jornada_portal,
     productos_disponibles_para_jornada,
@@ -64,14 +64,30 @@ def redirect_usuario_segun_rol(user):
 def obtener_cliente_usuario(request):
     if not request.user.is_authenticated or request.user.is_superuser:
         return None
-    return getattr(request.user, "cliente_profile", None)
+    return Cliente.objects.order_by("id").first() or getattr(request.user, "cliente_profile", None)
+
+
+def jornadas_compartidas():
+    return Jornada.objects.select_related("cliente")
+
+
+def productos_compartidos():
+    return Producto.objects.all()
+
+
+def zonas_compartidas():
+    return Zona.objects.all()
+
+
+def vendedores_compartidos():
+    return Vendedor.objects.select_related("zona_preferida")
 
 
 def obtener_contexto_negocio(cliente):
     return {
-        "zonas_qs": cliente.zonas.order_by("nombre"),
-        "productos_qs": cliente.productos.order_by("nombre"),
-        "vendedores_qs": cliente.vendedores.order_by("nombre"),
+        "zonas_qs": zonas_compartidas().order_by("nombre"),
+        "productos_qs": productos_compartidos().order_by("nombre"),
+        "vendedores_qs": vendedores_compartidos().order_by("nombre"),
     }
 
 
@@ -113,20 +129,19 @@ def panel_cliente(request):
         return redirect("login")
 
     hoy = timezone.localdate()
-    jornadas = cliente.jornadas.order_by("-fecha")[:8]
+    jornadas = jornadas_compartidas().order_by("-fecha")[:8]
     controles = (
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
-        .filter(jornada__cliente=cliente)
         .order_by("-jornada__fecha", "zona__nombre")
     )
     context = {
         "cliente": cliente,
         "jornadas": jornadas,
-        "jornada_activa": cliente.jornadas.filter(fecha=hoy, activa=True).first(),
-        "total_vendedores": cliente.vendedores.filter(activo=True).count(),
-        "total_zonas": cliente.zonas.filter(activa=True).count(),
-        "total_productos": cliente.productos.filter(activo=True).count(),
-        "adelantos_mes": Adelanto.objects.filter(vendedor__cliente=cliente, fecha__month=hoy.month, fecha__year=hoy.year)
+        "jornada_activa": jornadas_compartidas().filter(fecha=hoy, activa=True).first(),
+        "total_vendedores": vendedores_compartidos().filter(activo=True).count(),
+        "total_zonas": zonas_compartidas().filter(activa=True).count(),
+        "total_productos": productos_compartidos().filter(activo=True).count(),
+        "adelantos_mes": Adelanto.objects.filter(fecha__month=hoy.month, fecha__year=hoy.year)
         .aggregate(total=Sum("monto"))["total"]
         or 0,
         "ultimos_controles": controles[:10],
@@ -139,7 +154,7 @@ def jornadas_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    jornadas = cliente.jornadas.order_by("-fecha", "-id")
+    jornadas = jornadas_compartidas().order_by("-fecha", "-id")
     return render(request, "gestion_ventas/jornadas_lista.html", {"cliente": cliente, "jornadas": jornadas})
 
 
@@ -168,7 +183,7 @@ def jornada_editar(request, jornada_id):
     if cliente is None:
         return redirect("login")
 
-    jornada = get_object_or_404(cliente.jornadas, id=jornada_id)
+    jornada = get_object_or_404(jornadas_compartidas(), id=jornada_id)
     form = JornadaForm(request.POST or None, instance=jornada)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -187,12 +202,11 @@ def informes_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    vendedores = cliente.vendedores.filter(activo=True).order_by("nombre")
+    vendedores = vendedores_compartidos().filter(activo=True).order_by("nombre")
     form = InformeFiltroForm(request.GET or None, vendedores=vendedores)
     controles = (
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
         .prefetch_related("detalles__producto", "adelantos")
-        .filter(jornada__cliente=cliente)
         .order_by("-jornada__fecha", "zona__nombre")
     )
     if form.is_valid():
@@ -274,8 +288,8 @@ def zonas_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    zonas = cliente.zonas.prefetch_related("comisiones_producto__producto").order_by("nombre")
-    productos = cliente.productos.order_by("nombre")
+    zonas = zonas_compartidas().prefetch_related("comisiones_producto__producto").order_by("nombre")
+    productos = productos_compartidos().order_by("nombre")
     form = ZonaForm(request.POST or None)
     formset = construir_formset_comisiones(productos, request.POST or None)
     if request.method == "POST" and form.is_valid() and formset.is_valid():
@@ -298,7 +312,7 @@ def productos_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    productos = cliente.productos.order_by("nombre")
+    productos = productos_compartidos().order_by("nombre")
     form = ProductoForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         producto = form.save(commit=False)
@@ -319,8 +333,8 @@ def vendedores_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    zonas = cliente.zonas.order_by("nombre")
-    vendedores = cliente.vendedores.select_related("zona_preferida").order_by("nombre")
+    zonas = zonas_compartidas().order_by("nombre")
+    vendedores = vendedores_compartidos().order_by("nombre")
     form = VendedorForm(request.POST or None, zonas=zonas)
     if request.method == "POST" and form.is_valid():
         vendedor = form.save(commit=False)
@@ -341,7 +355,7 @@ def producto_editar(request, producto_id):
     if cliente is None:
         return redirect("login")
 
-    producto = get_object_or_404(cliente.productos, id=producto_id)
+    producto = get_object_or_404(productos_compartidos(), id=producto_id)
     form = ProductoForm(request.POST or None, instance=producto)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -353,7 +367,7 @@ def producto_editar(request, producto_id):
         "gestion_ventas/productos_lista.html",
         {
             "cliente": cliente,
-            "productos": cliente.productos.order_by("nombre"),
+            "productos": productos_compartidos().order_by("nombre"),
             "form": form,
             "modo": "editar",
             "objeto_edicion": producto,
@@ -366,7 +380,7 @@ def producto_eliminar(request, producto_id):
     if cliente is None:
         return redirect("login")
 
-    producto = get_object_or_404(cliente.productos, id=producto_id)
+    producto = get_object_or_404(productos_compartidos(), id=producto_id)
     if request.method == "POST":
         producto.delete()
         messages.success(request, "El producto fue eliminado.")
@@ -378,8 +392,8 @@ def vendedor_editar(request, vendedor_id):
     if cliente is None:
         return redirect("login")
 
-    vendedor = get_object_or_404(cliente.vendedores, id=vendedor_id)
-    zonas = cliente.zonas.order_by("nombre")
+    vendedor = get_object_or_404(vendedores_compartidos(), id=vendedor_id)
+    zonas = zonas_compartidas().order_by("nombre")
     form = VendedorForm(request.POST or None, instance=vendedor, zonas=zonas)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -391,7 +405,7 @@ def vendedor_editar(request, vendedor_id):
         "gestion_ventas/vendedores_lista.html",
         {
             "cliente": cliente,
-            "vendedores": cliente.vendedores.select_related("zona_preferida").order_by("nombre"),
+            "vendedores": vendedores_compartidos().order_by("nombre"),
             "form": form,
             "modo": "editar",
             "objeto_edicion": vendedor,
@@ -404,7 +418,7 @@ def vendedor_eliminar(request, vendedor_id):
     if cliente is None:
         return redirect("login")
 
-    vendedor = get_object_or_404(cliente.vendedores, id=vendedor_id)
+    vendedor = get_object_or_404(vendedores_compartidos(), id=vendedor_id)
     if request.method == "POST":
         vendedor.delete()
         messages.success(request, "El vendedor fue eliminado.")
@@ -416,8 +430,8 @@ def zona_editar(request, zona_id):
     if cliente is None:
         return redirect("login")
 
-    zona = get_object_or_404(cliente.zonas, id=zona_id)
-    productos = cliente.productos.order_by("nombre")
+    zona = get_object_or_404(zonas_compartidas(), id=zona_id)
+    productos = productos_compartidos().order_by("nombre")
     form = ZonaForm(request.POST or None, instance=zona)
     formset = construir_formset_comisiones(productos, request.POST or None, zona=zona)
     if request.method == "POST" and form.is_valid() and formset.is_valid():
@@ -431,7 +445,7 @@ def zona_editar(request, zona_id):
         "gestion_ventas/zonas_lista.html",
         {
             "cliente": cliente,
-            "zonas": cliente.zonas.prefetch_related("comisiones_producto__producto").order_by("nombre"),
+            "zonas": zonas_compartidas().prefetch_related("comisiones_producto__producto").order_by("nombre"),
             "form": form,
             "formset": formset,
             "modo": "editar",
@@ -445,7 +459,7 @@ def zona_eliminar(request, zona_id):
     if cliente is None:
         return redirect("login")
 
-    zona = get_object_or_404(cliente.zonas, id=zona_id)
+    zona = get_object_or_404(zonas_compartidas(), id=zona_id)
     if request.method == "POST":
         zona.delete()
         messages.success(request, "La zona fue eliminada.")
@@ -457,12 +471,10 @@ def adelantos_cliente(request):
     if cliente is None:
         return redirect("login")
 
-    vendedores = cliente.vendedores.order_by("nombre")
+    vendedores = vendedores_compartidos().order_by("nombre")
     controles = ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor").filter(
-        jornada__cliente=cliente
     )
     adelantos = Adelanto.objects.select_related("vendedor", "control__jornada", "control__zona").filter(
-        vendedor__cliente=cliente
     )
     form = AdelantoForm(
         request.POST or None,
@@ -490,7 +502,7 @@ def pagos_cliente(request):
     controles = (
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
         .prefetch_related("detalles__producto", "adelantos")
-        .filter(jornada__cliente=cliente, cerrada=True)
+        .filter(cerrada=True)
         .order_by("-jornada__fecha", "zona__nombre")
     )
     return render(request, "gestion_ventas/pagos_lista.html", {"cliente": cliente, "controles": controles})
@@ -503,7 +515,6 @@ def envios_trazabilidad(request):
 
     envios = (
         EnvioInterzona.objects.select_related("jornada", "producto", "zona_origen", "zona_destino")
-        .filter(jornada__cliente=cliente)
         .order_by("-fecha")
     )
     return render(request, "gestion_ventas/envios_trazabilidad.html", {"cliente": cliente, "envios": envios})
@@ -514,7 +525,7 @@ def desprendible_pago(request):
     if cliente is None:
         return redirect("login")
 
-    vendedores = cliente.vendedores.filter(activo=True).order_by("nombre")
+    vendedores = vendedores_compartidos().filter(activo=True).order_by("nombre")
     hoy = timezone.localdate()
     inicio_mes = hoy.replace(day=1)
     form = DesprendiblePagoForm(
@@ -537,7 +548,6 @@ def desprendible_pago(request):
             ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor")
             .prefetch_related("detalles__producto", "adelantos")
             .filter(
-                jornada__cliente=cliente,
                 cerrada=True,
                 jornada__fecha__gte=fecha_inicio,
                 jornada__fecha__lte=fecha_fin,
@@ -548,7 +558,6 @@ def desprendible_pago(request):
             controles = controles.filter(vendedor=vendedor)
 
         adelantos_adicionales = Adelanto.objects.filter(
-            vendedor__cliente=cliente,
             fecha__gte=fecha_inicio,
             fecha__lte=fecha_fin,
             control__isnull=True,
@@ -659,7 +668,6 @@ def informe_editar(request, control_id):
     control = get_object_or_404(
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor").prefetch_related("detalles__producto"),
         id=control_id,
-        jornada__cliente=cliente,
     )
     form = InformeForm(request.POST or None, instance=control)
     DetalleFormSet = modelformset_factory(
@@ -690,7 +698,6 @@ def informe_fotos(request, control_id):
     control = get_object_or_404(
         ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor").prefetch_related("detalles__producto"),
         id=control_id,
-        jornada__cliente=cliente,
     )
     evidencias = [detalle for detalle in control.detalles.select_related("producto").all() if detalle.evidencia_salida]
 
@@ -709,7 +716,6 @@ def informe_eliminar(request, control_id):
     control = get_object_or_404(
         ControlZonaJornada.objects.select_related("jornada"),
         id=control_id,
-        jornada__cliente=cliente,
     )
     if request.method == "POST":
         control.delete()
@@ -722,7 +728,7 @@ def portal_vendedor(request, fecha_jornada=None, token=None):
     if token is None and not request.user.is_authenticated:
         return redirect("login")
 
-    cliente = getattr(request.user, "cliente_profile", None) if request.user.is_authenticated else None
+    cliente = obtener_cliente_usuario(request) if request.user.is_authenticated else None
     jornada = obtener_jornada_portal(token=token, fecha=fecha_portal, cliente=cliente if token is None else None)
 
     if not jornada:
@@ -744,7 +750,7 @@ def portal_vendedor(request, fecha_jornada=None, token=None):
 
     productos = productos_disponibles_para_jornada(jornada)
     zonas = zonas_disponibles_para_jornada(jornada)
-    vendedores = Vendedor.objects.filter(cliente=jornada.cliente, activo=True) if jornada.cliente_id else Vendedor.objects.none()
+    vendedores = vendedores_compartidos().filter(activo=True)
 
     if request.method == "POST":
         accion = request.POST.get("accion")

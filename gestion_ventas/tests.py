@@ -91,6 +91,8 @@ class PortalJornadaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Unidad: Unidad")
         self.assertContains(response, 'data-formato="unidades"')
+        self.assertContains(response, 'accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"')
+        self.assertNotContains(response, 'capture="environment"')
 
     def test_portal_muestra_pesos_como_doble_signo_para_productos_tipo_libra(self):
         user = User.objects.create_user(username="cliente_pesos", password="secret123")
@@ -253,6 +255,17 @@ class PanelClienteTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["cliente"], cliente)
+
+    def test_usuarios_comparten_vendedores_entre_perfiles(self):
+        owner = User.objects.create_user(username="cliente_owner", password="secret123")
+        other = User.objects.create_user(username="cliente_other", password="secret123")
+        Vendedor.objects.create(cliente=other.cliente_profile, nombre="Compartido")
+
+        self.client.login(username="cliente_owner", password="secret123")
+        response = self.client.get(reverse("vendedores_cliente"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Compartido")
 
     def test_superusuario_desde_login_va_al_admin(self):
         User.objects.create_superuser(username="root", password="secret123", email="root@example.com")

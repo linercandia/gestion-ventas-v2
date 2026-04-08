@@ -253,6 +253,27 @@
     .btn-success:hover {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     }
+
+    .photo-hint {
+        color: var(--text-secondary);
+        font-size: 0.76rem;
+        line-height: 1.35;
+    }
+
+    .photo-preview {
+        display: none;
+        width: 100%;
+        margin-top: 8px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+        object-fit: cover;
+        aspect-ratio: 4 / 3;
+        background: #eef2ff;
+    }
+
+    .photo-preview.is-visible {
+        display: block;
+    }
     
     /* Estilo para el título del portal */
     .portal-title {
@@ -363,8 +384,9 @@
                                                 {% endif %}
                                             {% endfor %}
                                         {% else %}
-                                            <input type="file" name="prod_evidencia_{{ p.id }}" class="form-control form-control-sm" accept="image/*" capture="environment" required>
-                                            <div class="small text-muted mt-1">Subir foto de la cantidad de producto con el que sales.</div>
+                                            <input type="file" name="prod_evidencia_{{ p.id }}" class="form-control form-control-sm js-photo-input" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif" required>
+                                            <img class="photo-preview" alt="Vista previa de la evidencia de {{ p.nombre }}">
+                                            <div class="photo-hint mt-1">Obligatorio. Puedes tomar la foto o escogerla desde la galería del celular.</div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -504,6 +526,24 @@
         document.getElementById('ventasForm')?.addEventListener('submit', function() {
             document.querySelectorAll('.formato-dinamico').forEach(input => {
                 if (input.value) input.value = input.value.replace(/\D/g, "");
+            });
+        });
+        document.querySelectorAll('.js-photo-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const preview = this.parentElement.querySelector('.photo-preview');
+                const file = this.files && this.files[0];
+                if (!preview) return;
+                if (!file) {
+                    preview.classList.remove('is-visible');
+                    preview.removeAttribute('src');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    preview.src = event.target && event.target.result ? event.target.result : "";
+                    preview.classList.add('is-visible');
+                };
+                reader.readAsDataURL(file);
             });
         });
         window.onload = function() {

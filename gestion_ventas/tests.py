@@ -683,3 +683,32 @@ class PanelClienteTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(ControlZonaJornada.objects.filter(id=control.id).exists())
+
+    def test_cliente_puede_ver_fotos_de_salida_desde_informes(self):
+        user = User.objects.create_user(username="cliente_fotos_informe", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+        zona = Zona.objects.create(cliente=cliente, nombre="Centro", activa=True)
+        control = ControlZonaJornada.objects.create(jornada=jornada, zona=zona, nombre_vendedor="Pablo", cerrada=True)
+        producto = Producto.objects.create(cliente=cliente, nombre="Empanada", unidad_medida="Und", formato_visual="unidades")
+        foto = SimpleUploadedFile("salida.jpg", b"fake-image-content", content_type="image/jpeg")
+        temp_media = os.path.join(settings.BASE_DIR, "test_media_uploads_informes")
+        os.makedirs(temp_media, exist_ok=True)
+
+        try:
+            with self.settings(MEDIA_ROOT=temp_media):
+                InventarioControl.objects.create(
+                    control=control,
+                    producto=producto,
+                    cantidad_salida=5,
+                    evidencia_salida=foto,
+                )
+
+                self.client.login(username="cliente_fotos_informe", password="secret123")
+                response = self.client.get(reverse("informe_fotos", args=[control.id]))
+        finally:
+            shutil.rmtree(temp_media, ignore_errors=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Empanada")
+        self.assertContains(response, "Abrir foto")

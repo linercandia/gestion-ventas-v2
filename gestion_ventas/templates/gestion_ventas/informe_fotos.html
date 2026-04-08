@@ -1,0 +1,76 @@
+{% extends "gestion_ventas/base_panel.html" %}
+
+{% block title %}Fotos de Salida{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Fotos de salida</h2>
+    <p>{{ control.jornada.fecha|date:"d/m/Y" }} | {{ control.vendedor_nombre }} | {{ control.zona.nombre }}</p>
+</section>
+
+<style>
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+    }
+
+    .photo-card {
+        background: rgba(255, 252, 245, 0.92);
+        border: 1px solid rgba(201, 177, 141, 0.24);
+        border-radius: 18px;
+        overflow: hidden;
+    }
+
+    .photo-card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        background: rgba(15, 118, 110, 0.05);
+    }
+
+    .photo-body {
+        padding: 14px;
+        display: grid;
+        gap: 8px;
+    }
+
+    .photo-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .photo-meta {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+</style>
+
+<section class="card">
+    <div style="display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 18px; flex-wrap: wrap;">
+        <h3 style="margin: 0;">Evidencias cargadas</h3>
+        <a class="btn btn-secondary" href="{% url 'informes_cliente' %}">Volver a informes</a>
+    </div>
+
+    {% if evidencias %}
+        <div class="photo-grid">
+            {% for detalle in evidencias %}
+                <article class="photo-card">
+                    <a href="{{ detalle.evidencia_salida.url }}" target="_blank">
+                        <img src="{{ detalle.evidencia_salida.url }}" alt="Foto de salida de {{ detalle.producto.nombre }}">
+                    </a>
+                    <div class="photo-body">
+                        <h4 class="photo-title">{{ detalle.producto.nombre }}</h4>
+                        <div class="photo-meta">Salida registrada: {{ detalle.cantidad_salida }}</div>
+                        <a class="btn btn-primary" href="{{ detalle.evidencia_salida.url }}" target="_blank">Abrir foto</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="muted">Este informe no tiene fotos de salida registradas.</p>
+    {% endif %}
+</section>
+{% endblock %}

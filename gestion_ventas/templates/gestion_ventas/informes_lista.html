@@ -252,6 +252,7 @@
                                 <span class="mini">Descuadre {{ bloque.descuadre|cop }}</span>
                                 <span class="mini">Adelanto {{ bloque.adelanto|cop }}</span>
                                 <div class="action-stack">
+                                    <a class="btn btn-primary" href="{{ bloque.fotos_url }}">Ver fotos</a>
                                     <a class="btn btn-secondary" href="{{ bloque.accion_url }}">Editar</a>
                                     <form method="post" action="{% url 'informe_eliminar' bloque.control.id %}">
                                         {% csrf_token %}

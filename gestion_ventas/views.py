@@ -247,6 +247,7 @@ def informes_cliente(request):
                 "descuadre": control.descuadre_dinero,
                 "adelanto": control.total_adelantos,
                 "accion_url": reverse("informe_editar", args=[control.id]),
+                "fotos_url": reverse("informe_fotos", args=[control.id]),
                 "filas": filas_control,
                 "total_salida": sum(fila["salida"] for fila in filas_control),
                 "total_enviada": sum(fila["enviada"] for fila in filas_control),
@@ -682,6 +683,25 @@ def informe_editar(request, control_id):
         request,
         "gestion_ventas/informe_form.html",
         {"cliente": cliente, "control": control, "form": form, "formset": formset},
+    )
+
+
+def informe_fotos(request, control_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    control = get_object_or_404(
+        ControlZonaJornada.objects.select_related("jornada", "zona", "vendedor").prefetch_related("detalles__producto"),
+        id=control_id,
+        jornada__cliente=cliente,
+    )
+    evidencias = [detalle for detalle in control.detalles.select_related("producto").all() if detalle.evidencia_salida]
+
+    return render(
+        request,
+        "gestion_ventas/informe_fotos.html",
+        {"cliente": cliente, "control": control, "evidencias": evidencias},
     )
 
 

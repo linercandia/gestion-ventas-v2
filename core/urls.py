@@ -30,6 +30,7 @@ urlpatterns = [
     path('panel/jornadas/', views.jornadas_cliente, name='jornadas_cliente'),
     path('panel/jornadas/nueva/', views.jornada_crear, name='jornada_crear'),
     path('panel/jornadas/<int:jornada_id>/editar/', views.jornada_editar, name='jornada_editar'),
+    path('panel/jornadas/<int:jornada_id>/eliminar/', views.jornada_eliminar, name='jornada_eliminar'),
     path('panel/zonas/', views.zonas_cliente, name='zonas_cliente'),
     path('panel/zonas/<int:zona_id>/editar/', views.zona_editar, name='zona_editar'),
     path('panel/zonas/<int:zona_id>/eliminar/', views.zona_eliminar, name='zona_eliminar'),

@@ -197,6 +197,18 @@ def jornada_editar(request, jornada_id):
     )
 
 
+def jornada_eliminar(request, jornada_id):
+    cliente = obtener_cliente_usuario(request)
+    if cliente is None:
+        return redirect("login")
+
+    jornada = get_object_or_404(jornadas_compartidas(), id=jornada_id)
+    if request.method == "POST":
+        jornada.delete()
+        messages.success(request, "La jornada fue eliminada.")
+    return redirect("jornadas_cliente")
+
+
 def informes_cliente(request):
     cliente = obtener_cliente_usuario(request)
     if cliente is None:

@@ -290,6 +290,17 @@ class PanelClienteTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["control"], control)
 
+    def test_cliente_puede_eliminar_jornada_desde_panel(self):
+        user = User.objects.create_user(username="cliente_eliminar_jornada", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+
+        self.client.login(username="cliente_eliminar_jornada", password="secret123")
+        response = self.client.post(reverse("jornada_eliminar", args=[jornada.id]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Jornada.objects.filter(id=jornada.id).exists())
+
     def test_usuario_cliente_puede_registrar_zona_y_producto(self):
         user = User.objects.create_user(username="cliente_catalogo", password="secret123")
         cliente = user.cliente_profile

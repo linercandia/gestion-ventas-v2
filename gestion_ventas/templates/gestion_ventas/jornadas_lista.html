@@ -36,7 +36,15 @@
                             </span>
                         </td>
                         <td><input value="{{ jornada.portal_url }}" readonly></td>
-                        <td><a class="btn btn-secondary" href="{% url 'jornada_editar' jornada.id %}">Editar</a></td>
+                        <td>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <a class="btn btn-secondary" href="{% url 'jornada_editar' jornada.id %}">Editar</a>
+                                <form method="post" action="{% url 'jornada_eliminar' jornada.id %}" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button class="btn btn-danger" type="submit" onclick="return confirm('¿Eliminar esta jornada?');">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>

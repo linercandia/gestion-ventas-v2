@@ -9,6 +9,7 @@ from django.forms import modelformset_factory
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_date
 from django.utils import timezone
 
 from .forms import (
@@ -700,13 +701,13 @@ def informe_eliminar(request, control_id):
     return redirect("informes_cliente")
 
 
-def portal_vendedor(request, token=None):
-    hoy = timezone.localdate()
+def portal_vendedor(request, fecha_jornada=None, token=None):
+    fecha_portal = parse_date(fecha_jornada) if fecha_jornada else timezone.localdate()
     if token is None and not request.user.is_authenticated:
         return redirect("login")
 
     cliente = getattr(request.user, "cliente_profile", None) if request.user.is_authenticated else None
-    jornada = obtener_jornada_portal(token=token, fecha=hoy, cliente=cliente if token is None else None)
+    jornada = obtener_jornada_portal(token=token, fecha=fecha_portal, cliente=cliente if token is None else None)
 
     if not jornada:
         request.session.pop("control_id", None)

@@ -26,6 +26,16 @@ class ClienteSignalsTests(TestCase):
 
 
 class PortalJornadaTests(TestCase):
+    def test_portal_publico_resuelve_jornada_por_fecha_y_token(self):
+        user = User.objects.create_user(username="cliente_portal_fecha", password="secret123")
+        cliente = user.cliente_profile
+        jornada = Jornada.objects.create(cliente=cliente, fecha=timezone.localdate(), activa=True)
+
+        response = self.client.get(reverse("portal_vendedor_token_fecha", args=[jornada.fecha.isoformat(), jornada.access_token]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["jornada"], jornada)
+
     def test_portal_publico_resuelve_jornada_por_token(self):
         user = User.objects.create_user(username="cliente_portal", password="secret123")
         cliente = user.cliente_profile

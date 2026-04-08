@@ -118,6 +118,13 @@
         font-weight: 800;
     }
 
+    .zone-commission-legacy {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.78rem;
+    }
+
     .zone-empty {
         color: var(--muted);
         font-size: 0.9rem;
@@ -219,6 +226,7 @@
                                         <div class="zone-commission-chip">
                                             <strong>{{ comision.producto.nombre }}</strong>
                                             <span>{{ comision.porcentaje_comision }}%</span>
+                                            <small class="zone-commission-legacy">{{ comision.producto.nombre }}: {{ comision.porcentaje_comision|floatformat:0 }}</small>
                                         </div>
                                     {% endfor %}
                                 </div>
